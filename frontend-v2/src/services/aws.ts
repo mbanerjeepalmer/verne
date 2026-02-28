@@ -1,9 +1,14 @@
 "use server";
 
-export const SendPromptToBedrock = async (prompt: string): Promise<string> => {
-  const region = "us-east-2";
+export const SendPromptToBedrock = async (
+  systemPrompt: string,
+  prompt: string,
+): Promise<string> => {
+  const region = "us-west-2";
   const model = "mistral.ministral-3-14b-instruct";
   const endpoint = `https://bedrock-runtime.${region}.amazonaws.com/model/${model}/converse`;
+
+  const promptToSend = `${systemPrompt}\n\n${prompt}`;
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -12,12 +17,15 @@ export const SendPromptToBedrock = async (prompt: string): Promise<string> => {
       Authorization: `Bearer ${process.env.AWS_BEDROCK_API_KEY}`,
     },
     body: JSON.stringify({
-      messages: [{ role: "user", content: [{ text: prompt }] }],
+      messages: [{ role: "user", content: [{ text: promptToSend }] }],
     }),
   });
 
   if (!response.ok) {
-    throw new Error("Failed to send prompt to Bedrock");
+    const data = await response.json();
+    throw new Error(
+      `Failed to send prompt to Bedrock: ${JSON.stringify(data)}`,
+    );
   }
 
   const data = await response.json();

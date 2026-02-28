@@ -8,6 +8,8 @@ import QueryBlock from "@/components/query-block/query-block";
 import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
 import { Mic, Search, Headphones, Zap } from "lucide-react";
+import Spacer from "@/components/spacer/spacer";
+import ConversationSection from "@/components/sections/conversation-section";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -294,7 +296,6 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="border-t border-black/[0.06] py-8 px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
