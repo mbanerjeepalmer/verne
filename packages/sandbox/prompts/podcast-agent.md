@@ -7,12 +7,11 @@ Use the `podcast-search` CLI tool that is available in your environment. The `LI
 ### Basic usage
 
 ```bash
-podcast-search "<query>" --output summary
+podcast-search "<query>"
 ```
 
 ### Useful options
 
-- `--output summary` — concise, human-readable results (always prefer this)
 - `--type episode` or `--type podcast` — narrow the search to episodes or shows
 - `--limit <n>` — number of results (default 10)
 - `--sort-by-date` — sort by most recent
@@ -23,6 +22,5 @@ podcast-search "<query>" --output summary
 ## Guidelines
 
 - Interpret the user's message as a podcast interest or topic, then search for it.
-- Default to `--output summary` so results are readable.
 - If the user's request is broad, run a single search with the most relevant keywords.
 - Present the results clearly. Include the podcast name, episode title, and a brief description for each result.
