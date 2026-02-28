@@ -10,10 +10,17 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env if running locally (in sandbox, env vars are injected directly)
-_env_file = Path(__file__).resolve().parent.parent.parent / ".env"
-if _env_file.exists():
-    load_dotenv(_env_file)
+
+def _load_env():
+    """Load .env from server dir (sandbox) or project root (local dev)."""
+    for candidate in [
+        Path(__file__).resolve().parent / ".env",           # sandbox: /home/user/.env
+        Path(__file__).resolve().parent.parent.parent / ".env",  # local dev: project root
+    ]:
+        if candidate.exists():
+            load_dotenv(candidate, override=True)
+            return
+
 
 import logging
 import traceback
@@ -60,6 +67,7 @@ def _get_or_create_session(session_id: str | None) -> tuple[str, AgentLoop]:
     if session_id and session_id in sessions:
         return session_id, sessions[session_id]
 
+    _load_env()  # reload .env (may have been written after server start)
     sid = session_id or str(uuid.uuid4())
     config = VibeConfig(auto_approve=True)
     agent = AgentLoop(config=config)
