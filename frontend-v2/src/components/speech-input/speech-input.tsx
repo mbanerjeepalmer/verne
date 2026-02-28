@@ -12,20 +12,18 @@ type AudioRecorderStatus =
   | "success";
 
 interface AudioRecorderProps {
-  apiEndpoint?: string;
-  onSuccess?: (response: unknown) => void;
+  onTranscript?: (text: string, isFinal: boolean) => void;
   onError?: (error: Error) => void;
 }
 
 export function SpeechInput({
-  apiEndpoint = "/api/audio",
-  onSuccess,
+  onTranscript,
   onError,
 }: AudioRecorderProps) {
   const [status, setStatus] = useState<AudioRecorderStatus>("idle");
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -52,41 +50,87 @@ export function SpeechInput({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // startRecording - starts the recording process
+  // startRecording - starts the recording process with WebSocket streaming
   const startRecording = useCallback(async () => {
     try {
+      // Connect to existing WebSocket
+      const ws = new WebSocket("ws://localhost:3001/ws");
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("[SpeechInput] WebSocket connected");
+        // Send start signal for transcription
+        ws.send(JSON.stringify({ type: "transcription.start" }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "transcription.delta") {
+            // Real-time text delta
+            onTranscript?.(data.text, false);
+          } else if (data.type === "transcription.done") {
+            // Final transcription
+            onTranscript?.(data.text, true);
+            setStatus("success");
+          } else if (data.type === "error") {
+            console.error("[SpeechInput] Error:", data.message);
+            setStatus("error");
+            onError?.(new Error(data.message));
+          } else if (data.type === "ready") {
+            console.log("[SpeechInput] Server ready");
+          }
+        } catch (error) {
+          console.error("[SpeechInput] Error parsing message:", error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("[SpeechInput] WebSocket error:", error);
+        setStatus("error");
+        onError?.(new Error("WebSocket connection error"));
+      };
+
+      ws.onclose = () => {
+        console.log("[SpeechInput] WebSocket closed");
+        setStatus("idle");
+      };
+
+      // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-
-      audioChunksRef.current = [];
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: "audio/webm;codecs=opus",
       });
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+          // Send audio chunks in real-time as they're available
+          event.data.arrayBuffer().then(buffer => {
+            ws.send(buffer);
+          });
         }
       };
 
-      mediaRecorder.onstop = async () => {
+      mediaRecorder.onstop = () => {
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
 
-        // Create blob from recorded chunks
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
-
-        // Upload the blob
-        await uploadAudio(audioBlob);
+        // Send stop signal to process transcription
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "transcription.stop" }));
+          setStatus("uploading");
+        }
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
+
+      // Request data every 100ms for real-time streaming
+      mediaRecorder.start(100);
       setStatus("recording");
       startTimer();
     } catch (error) {
@@ -96,7 +140,7 @@ export function SpeechInput({
         error instanceof Error ? error : new Error("Failed to start recording"),
       );
     }
-  }, [startTimer, onError]);
+  }, [startTimer, onError, onTranscript]);
 
   // stopRecording - stops the recording process
   const stopRecording = useCallback(() => {
@@ -108,36 +152,6 @@ export function SpeechInput({
       stopTimer();
     }
   }, [stopTimer]);
-
-  // uploadAudio - uploads the recorded audio to the server
-  const uploadAudio = async (blob: Blob) => {
-    setStatus("uploading");
-    try {
-      const formData = new FormData();
-      formData.append("audio", blob, "recording.webm");
-
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Upload failed: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      const data = await response.json();
-      setStatus("idle");
-      onSuccess?.(data);
-    } catch (error) {
-      console.error("Error uploading audio:", error);
-      setStatus("error");
-      onError?.(
-        error instanceof Error ? error : new Error("Failed to upload audio"),
-      );
-    }
-  };
 
   // handleClick - handles the click event for the microphone button
   const handleClick = () => {
