@@ -44,108 +44,11 @@ This document answers Q2: "How do we talk to it?" for Option A (`vibe-acp` subpr
     "update": {
       "sessionUpdate": "update_type",
       "content": {...}
->>>>>>> main
-=======
-# Mistral Vibe ACP Communication Discovery
-
-This document answers Q2: "How do we talk to it?" for Option A (`vibe-acp` subprocess).
-
-## Communication Method
-
-**Protocol**: JSON-RPC 2.0 over stdin/stdout with ACP (Agent Communication Protocol)
-
-## Key Components
-
-### 1. Process Management
-- `vibe-acp` runs as a subprocess
-- Communicates via line-buffered stdin/stdout
-- Uses JSON-RPC 2.0 message format
-
-### 2. Message Structure
-
-#### Request Format
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "method_name",
-  "params": {},
-  "id": 1
-}
-```
-
-#### Response Format
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {}
-}
-```
-
-#### Notification Format (Streaming)
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "session/update",
-  "params": {
-    "sessionId": "...",
-    "update": {
-      "sessionUpdate": "update_type",
-      "content": {...}
-=======
-# Mistral Vibe ACP Communication Discovery
-
-This document answers Q2: "How do we talk to it?" for Option A (`vibe-acp` subprocess).
-
-## Communication Method
-
-**Protocol**: JSON-RPC 2.0 over stdin/stdout with ACP (Agent Communication Protocol)
-
-## Key Components
-
-### 1. Process Management
-- `vibe-acp` runs as a subprocess
-- Communicates via line-buffered stdin/stdout
-- Uses JSON-RPC 2.0 message format
-
-### 2. Message Structure
-
-#### Request Format
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "method_name",
-  "params": {},
-  "id": 1
-}
-```
-
-#### Response Format
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {}
-}
-```
-
-#### Notification Format (Streaming)
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "session/update",
-  "params": {
-    "sessionId": "...",
-    "update": {
-      "sessionUpdate": "update_type",
-      "content": {...}
->>>>>>> main
     }
   }
 }
 ```
 
-<<<<<<< HEAD
 ### 3. Core Methods Encyclopedia
 
 #### `initialize` - Protocol Handshake
@@ -263,55 +166,18 @@ The agent provides real-time updates through `session/update` notifications:
 #### Update Type Catalog
 
 **`agent_message_chunk`** - Agent text output
-=======
-### 3. Core Methods
-
-#### `initialize`
-- Establishes ACP connection
-- Parameters: `protocol_version`, `client_capabilities`, `client_info`
-- Returns: Agent capabilities, protocol version, agent info
-
-#### `session/new`
-- Creates a new agent session
-- Parameters: `cwd`, `mcpServers`
-- Returns: `sessionId`, models, modes, config options
-
-#### `session/prompt`
-- Sends user input to the agent
-- Parameters: `prompt`, `session_id`
-- Returns: `stop_reason` when complete
-- Triggers streaming `session/update` notifications
-
-### 4. Streaming Updates
-
-The agent sends real-time updates via `session/update` notifications:
-
-- **`agent_message_chunk`**: Agent's text responses
-- **`agent_thought_chunk`**: Agent's internal reasoning
-- **`tool_call_update`**: Tool execution status
-- **`compact_start`/`compact_end`**: Session lifecycle
-- **`available_commands_update`**: Available commands
-
-### 5. Session Update Structure
-
->>>>>>> main
 ```json
 {
   "sessionUpdate": "agent_message_chunk",
   "content": {
     "type": "text",
-<<<<<<< HEAD
     "text": "Hello there!",
     "chunk_id": 1,
     "is_final": false
-=======
-    "text": "Hello, I'm Mistral Vibe!"
->>>>>>> main
   }
 }
 ```
 
-<<<<<<< HEAD
 **`agent_thought_chunk`** - Internal reasoning process
 ```json
 {
@@ -420,17 +286,17 @@ from typing import Dict, Any, Optional
 
 class ACPClient:
     """Complete ACP client implementation with comprehensive features."""
-    
+
     def __init__(self):
         self.process = None
         self.session_id = None
         self.request_counter = 1
         self.pending_requests = {}
-        
+
     async def start(self):
         """Start the vibe-acp subprocess with proper configuration."""
         print("🔹 Starting vibe-acp subprocess with enhanced configuration...")
-        
+
         self.process = await asyncio.create_subprocess_exec(
             "vibe-acp",
             stdin=subprocess.PIPE,
@@ -442,54 +308,54 @@ class ACPClient:
                 "VIBE_LOG_LEVEL": "debug"
             }
         )
-        
+
         print("✅ vibe-acp subprocess started successfully")
         print(f"   PID: {self.process.pid}")
         print(f"   Status: {self.process.returncode is None}")
-        
+
         # Start response handler
         asyncio.create_task(self._handle_responses())
-        
+
     async def _handle_responses(self):
         """Continuous response handling with comprehensive logging."""
         if not self.process or not self.process.stdout:
             return
-        
+
         try:
             while True:
                 line = await self.process.stdout.readline()
                 if not line:
                     break
-                    
+
                 try:
                     response = json.loads(line.decode('utf-8').strip())
-                    
+
                     # Enhanced logging
                     print(f"📥 Received: {json.dumps(response, indent=2)}")
-                    
+
                     if response.get("method") == "session/update":
                         await self._handle_update(response)
                     elif response.get("id"):
                         await self._handle_request_response(response)
                     else:
                         print(f"⚠️  Unhandled message type: {response}")
-                        
+
                 except json.JSONDecodeError as e:
                     print(f"❌ JSON decode error: {e}")
                     print(f"   Raw line: {line}")
                 except Exception as e:
                     print(f"❌ Response handling error: {e}")
-                    
+
         except Exception as e:
             print(f"❌ Response handler crashed: {e}")
-            
+
     async def _handle_update(self, update: Dict[str, Any]):
         """Process streaming updates with detailed handling."""
         update_type = update["params"]["update"]["sessionUpdate"]
         content = update["params"]["update"]["content"]
-        
+
         print(f"📬 Streaming update: {update_type}")
-        
+
         if update_type == "agent_message_chunk":
             print(f"   Message: {content.get('text', '')}")
         elif update_type == "agent_thought_chunk":
@@ -497,11 +363,11 @@ class ACPClient:
         elif update_type == "tool_call_update":
             print(f"   Tool: {content.get('tool_name')} - {content.get('status')}")
         # Add more update type handlers as needed
-        
+
     async def _handle_request_response(self, response: Dict[str, Any]):
         """Handle request responses with comprehensive processing."""
         request_id = response["id"]
-        
+
         if "result" in response:
             print(f"✅ Request {request_id} successful")
             print(f"   Result: {json.dumps(response['result'], indent=2)}")
@@ -509,7 +375,7 @@ class ACPClient:
             print(f"❌ Request {request_id} failed")
             print(f"   Error: {response['error']['message']}")
             print(f"   Code: {response['error']['code']}")
-        
+
         # Resolve pending request
         if request_id in self.pending_requests:
             future = self.pending_requests.pop(request_id)
@@ -517,31 +383,31 @@ class ACPClient:
                 future.set_result(response["result"])
             else:
                 future.set_exception(Exception(response["error"]["message"]))
-                
+
     async def _send_request(self, method: str, params: Dict[str, Any]) -> Any:
         """Send JSON-RPC request with enhanced features."""
         request_id = self.request_counter
         self.request_counter += 1
-        
+
         request = {
             "jsonrpc": "2.0",
             "method": method,
             "params": params,
             "id": request_id
         }
-        
+
         print(f"📤 Sending request {request_id}: {method}")
         print(f"   Params: {json.dumps(params, indent=2)}")
-        
+
         # Create future for response
         future = asyncio.Future()
         self.pending_requests[request_id] = future
-        
+
         # Send request
         if self.process and self.process.stdin:
             self.process.stdin.write((json.dumps(request) + "\n").encode())
             await self.process.stdin.drain()
-        
+
         # Wait for response
         try:
             result = await asyncio.wait_for(future, timeout=30.0)
@@ -549,11 +415,11 @@ class ACPClient:
         except asyncio.TimeoutError:
             future.cancel()
             raise Exception(f"Request {request_id} timed out")
-            
+
     async def initialize(self, client_info: Dict[str, Any]):
         """Initialize ACP connection with comprehensive configuration."""
         print("🔹 Initializing ACP connection...")
-        
+
         params = {
             "protocol_version": 1,
             "client_capabilities": {
@@ -564,15 +430,15 @@ class ACPClient:
             },
             "client_info": client_info
         }
-        
+
         result = await self._send_request("initialize", params)
         print("✅ Initialization successful")
         return result
-        
+
     async def create_session(self, config: Dict[str, Any]):
         """Create new session with detailed configuration."""
         print("🔹 Creating new session...")
-        
+
         params = {
             "cwd": config.get("cwd", "."),
             "mcpServers": config.get("mcp_servers", []),
@@ -582,19 +448,19 @@ class ACPClient:
                 "model": config.get("model", "mistral-tiny")
             }
         }
-        
+
         result = await self._send_request("session/new", params)
         self.session_id = result["sessionId"]
         print(f"✅ Session created: {self.session_id}")
         return result
-        
+
     async def send_prompt(self, prompt: str, options: Optional[Dict] = None):
         """Send prompt to agent with comprehensive options."""
         if not self.session_id:
             raise Exception("No active session")
-        
+
         print(f"🔹 Sending prompt: '{prompt}'")
-        
+
         params = {
             "prompt": prompt,
             "session_id": self.session_id,
@@ -604,23 +470,24 @@ class ACPClient:
                 "temperature": 0.7
             }
         }
-        
+
         result = await self._send_request("session/prompt", params)
         print(f"✅ Prompt completed. Stop reason: {result.get('stop_reason')}")
         return result
-        
+
     async def close(self):
         """Gracefully shutdown the ACP client."""
         print("🔹 Shutting down ACP client...")
-        
+
         if self.process:
             self.process.stdin.close()
             await self.process.wait()
             print(f"✅ Process terminated with code: {self.process.returncode}")
             self.process = None
-            
+
         self.session_id = None
         self.pending_requests.clear()
+```
 
 ## Key Findings and Analysis
 
@@ -691,7 +558,7 @@ class ACPClient:
 
 **Lifecycle Phases:**
 1. **Initialization**: `compact_start` notification
-2. **Configuration**: `available_commands_update` 
+2. **Configuration**: `available_commands_update`
 3. **Interaction**: Multiple `session/prompt` calls
 4. **Termination**: `compact_end` notification
 
@@ -719,190 +586,7 @@ class ACPClient:
 
 ### Enhanced Test Script
 
-The `test_vibe_acp_subprocess.py` script provides a comprehensive demonstration:
-
-```python
-import asyncio
-import json
-import subprocess
-import sys
-
-async def test_acp_communication():
-    """Comprehensive test of ACP communication with detailed output."""
-    
-    print("=" * 60)
-    print("MISTRAL VIBE ACP COMMUNICATION TEST")
-    print("=" * 60)
-    
-    # Phase 1: Process Management
-    print("\n📁 PHASE 1: PROCESS MANAGEMENT")
-    print("-" * 40)
-    
-    try:
-        process = await asyncio.create_subprocess_exec(
-            "vibe-acp",
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        print("✅ vibe-acp subprocess started successfully")
-        print(f"   Process ID: {process.pid}")
-        print(f"   Command: vibe-acp")
-        
-    except FileNotFoundError:
-        print("❌ Error: vibe-acp executable not found")
-        print("   Please ensure mistral-vibe is installed and in PATH")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ Error starting process: {e}")
-        sys.exit(1)
-        
-    # Phase 2: JSON-RPC Communication
-    print("\n📡 PHASE 2: JSON-RPC COMMUNICATION")
-    print("-" * 40)
-    
-    # Request 1: Initialize
-    print("\n📤 REQUEST 1: initialize")
-    request1 = {
-        "jsonrpc": "2.0",
-        "method": "initialize",
-        "params": {
-            "protocol_version": 1,
-            "client_capabilities": {
-                "streaming": True,
-                "session_management": True,
-                "tool_execution": False
-            },
-            "client_info": {
-                "name": "test_client",
-                "version": "1.0.0",
-                "environment": "testing"
-            }
-        },
-        "id": 1
-    }
-    
-    print(f"   Sending: {json.dumps(request1, indent=2)}")
-    process.stdin.write((json.dumps(request1) + "\n").encode())
-    await process.stdin.drain()
-    
-    # Read initialize response
-    line = await process.stdout.readline()
-    response1 = json.loads(line.decode('utf-8').strip())
-    print(f"   Received: {json.dumps(response1, indent=2)}")
-    
-    if response1.get("id") == 1 and "result" in response1:
-        print("✅ Initialization successful")
-        print(f"   Agent: {response1['result']['agent_info']['name']}")
-        print(f"   Protocol: {response1['result']['protocol_version']}")
-    else:
-        print("❌ Initialization failed")
-        return
-        
-    # Phase 3: Session Lifecycle
-    print("\n🔄 PHASE 3: SESSION LIFECYCLE")
-    print("-" * 40)
-    
-    # Request 2: Create Session
-    print("\n📤 REQUEST 2: session/new")
-    request2 = {
-        "jsonrpc": "2.0",
-        "method": "session/new",
-        "params": {
-            "cwd": ".",
-            "mcpServers": []
-        },
-        "id": 2
-    }
-    
-    print(f"   Sending: {json.dumps(request2, indent=2)}")
-    process.stdin.write((json.dumps(request2) + "\n").encode())
-    await process.stdin.drain()
-    
-    # Read session creation response
-    line = await process.stdout.readline()
-    response2 = json.loads(line.decode('utf-8').strip())
-    print(f"   Received: {json.dumps(response2, indent=2)}")
-    
-    if response2.get("id") == 2 and "result" in response2:
-        session_id = response2['result']['sessionId']
-        print(f"✅ Session created: {session_id}")
-        print(f"   Available models: {', '.join([m['id'] for m in response2['result']['models']])}")
-    else:
-        print("❌ Session creation failed")
-        return
-        
-    # Phase 4: Interactive Communication
-    print("\n💬 PHASE 4: INTERACTIVE COMMUNICATION")
-    print("-" * 40)
-    
-    # Request 3: Send Prompt
-    print("\n📤 REQUEST 3: session/prompt")
-    prompt_text = "Hello, what can you do?"
-    request3 = {
-        "jsonrpc": "2.0",
-        "method": "session/prompt",
-        "params": {
-            "prompt": prompt_text,
-            "session_id": session_id
-        },
-        "id": 3
-    }
-    
-    print(f"   Sending prompt: '{prompt_text}'")
-    print(f"   Full request: {json.dumps(request3, indent=2)}")
-    process.stdin.write((json.dumps(request3) + "\n").encode())
-    await process.stdin.drain()
-    
-    # Process streaming updates
-    update_count = 0
-    final_response_received = False
-    
-    print("\n📬 STREAMING UPDATES:")
-    while not final_response_received:
-        line = await process.stdout.readline()
-        if not line:
-            break
-            
-        response = json.loads(line.decode('utf-8').strip())
-        
-        if response.get("method") == "session/update":
-            update_count += 1
-            update_type = response["params"]["update"]["sessionUpdate"]
-            content = response["params"]["update"]["content"]
-            
-            print(f"   Update {update_count}: {update_type}")
-            
-            if update_type == "agent_message_chunk":
-                print(f"     Message: '{content.get('text', '')}'")
-            elif update_type == "agent_thought_chunk":
-                print(f"     Thought: '{content.get('thought', '')}'")
-            elif update_type == "tool_call_update":
-                print(f"     Tool: {content.get('tool_name')} - {content.get('status')}")
-                
-        elif response.get("id") == 3:
-            print(f"\n📥 FINAL RESPONSE:")
-            print(f"   {json.dumps(response, indent=2)}")
-            final_response_received = True
-            print(f"✅ Prompt completed. Stop reason: {response['result']['stop_reason']}")
-            
-    # Phase 5: Summary
-    print("\n📊 PHASE 5: TEST SUMMARY")
-    print("-" * 40)
-    print(f"✅ Total requests sent: 3")
-    print(f"✅ Streaming updates received: {update_count}")
-    print(f"✅ Session duration: {response['result'].get('usage', {}).get('total_tokens', 0)} tokens")
-    print(f"✅ Communication protocol: JSON-RPC 2.0 over stdin/stdout")
-    print(f"✅ All tests passed successfully")
-    
-    # Cleanup
-    process.stdin.close()
-    await process.wait()
-    print(f"\n🧹 Cleanup: Process terminated with code {process.returncode}")
-
-if __name__ == "__main__":
-    asyncio.run(test_acp_communication())
-```
+The `test_vibe_acp_subprocess.py` script provides a comprehensive demonstration. See the file for full implementation.
 
 ### How to Run
 
@@ -910,79 +594,10 @@ From the project root:
 
 ```bash
 .venv/bin/python exploration/agent-refined/test_vibe_acp_subprocess.py
-=======
-## Implementation Example
-
-```python
-# Start subprocess
-process = await asyncio.create_subprocess_exec(
-    "vibe-acp",
-    stdin=subprocess.PIPE,
-    stdout=subprocess.PIPE
-)
-
-# Send initialize request
-request = {
-    "jsonrpc": "2.0",
-    "method": "initialize",
-    "params": {"protocol_version": 1, "client_capabilities": {...}},
-    "id": 1
-}
-process.stdin.write((json.dumps(request) + "\n").encode())
-
-# Read responses
-while True:
-    line = await process.stdout.readline()
-    response = json.loads(line)
-    
-    if response.get("method") == "session/update":
-        # Handle streaming update
-        update_type = response["params"]["update"]["sessionUpdate"]
-        content = response["params"]["update"]["content"]
-        
-    elif response.get("id"):
-        # Handle request response
-        result = response["result"]
-```
-
-## Key Findings
-
-1. **Protocol**: JSON-RPC 2.0 with ACP extensions
-2. **Transport**: Line-buffered stdin/stdout
-3. **Methods**: `initialize`, `session/new`, `session/prompt`, etc.
-4. **Streaming**: Real-time updates via `session/update` notifications
-5. **Session Management**: Each interaction requires a `sessionId`
-6. **Error Handling**: JSON-RPC error responses for failed requests
-
-## Working Test
-
-The `test_vibe_acp_subprocess.py` script demonstrates:
-- Starting `vibe-acp` as subprocess
-- Initializing ACP connection
-- Creating sessions
-- Sending prompts and receiving streaming responses
-- Proper JSON-RPC message handling
-
-This confirms that Option A (vibe-acp subprocess) uses **JSON-RPC over stdin/stdout** for communication, with structured requests/responses and streaming notifications for real-time agent interactions.
-
-### How to Run the Demonstration
-
-```bash
-# From the project root directory
-cd exploration/agent-refined
-
-# Run with uv (recommended)
-uv run python test_vibe_acp_subprocess.py
-
-# Or run with regular Python (ensure venv is activated)
-source ../../.venv/bin/activate
-python test_vibe_acp_subprocess.py
->>>>>>> main
 ```
 
 ### Expected Output
 
-<<<<<<< HEAD
 ```
 🚀 Testing vibe-acp Subprocess Communication
 ==================================================
@@ -1066,56 +681,10 @@ Key findings for Q2:
 **Solutions:**
 
 1. **Make executable:**
-=======
-The script will show:
-
-1. **Process Management**: Starting the `vibe-acp` subprocess
-2. **JSON-RPC Communication**: Request/response cycle with message IDs
-3. **Session Lifecycle**: Initialize → Create Session → Send Prompt
-4. **Streaming Updates**: Multiple `session/update` notifications
-5. **Completion**: Final prompt response with stop reason
-
-### Key Output Examples
-
-```
-🔹 Starting vibe-acp subprocess...
-✅ vibe-acp subprocess started
-
-📤 JSON-RPC Request (1): initialize
-📥 JSON-RPC Response: 1
-✅ Initialization successful
-
-🔹 Creating new session...
-📤 JSON-RPC Request (2): session/new
-📥 JSON-RPC Response: 2
-✅ Session created: 57a0ef04-98bb-41c9-973d-d9e7f052cdd6
-
-🔹 Sending prompt: 'Hello, what can you do?'
-📤 JSON-RPC Request (3): session/prompt
-📥 JSON-RPC Response: session/update
-📥 JSON-RPC Response: session/update
-... (multiple streaming updates) ...
-📥 JSON-RPC Response: 3
-✅ Prompt completed. Stop reason: end_turn
-```
-
-### Troubleshooting
-
-If you encounter issues:
-
-1. **vibe-acp not found**: Ensure mistral-vibe is installed in the virtual environment
-   ```bash
-   cd ../..
-   uv pip install mistral-vibe
-   ```
-
-2. **Permission errors**: Make sure the `.venv/bin/vibe-acp` is executable
->>>>>>> main
    ```bash
    chmod +x .venv/bin/vibe-acp
    ```
 
-<<<<<<< HEAD
 2. **Check file permissions:**
    ```bash
    ls -la .venv/bin/vibe-acp
@@ -1156,75 +725,6 @@ If you encounter issues:
 3. **Verify vibe-acp version:**
    ```bash
    vibe-acp --version
-   ```
-
-#### Issue 4: Connection reset
-
-**Symptoms:**
-- Process terminates unexpectedly
-- `BrokenPipeError` or `ConnectionResetError`
-
-**Solutions:**
-
-1. **Proper cleanup:**
-   ```python
-   try:
-       # Your communication code
-   finally:
-       if process and process.stdin:
-           process.stdin.close()
-       if process:
-           await process.wait()
-   ```
-
-2. **Health checks:**
-   ```python
-   if process.returncode is not None:
-       print(f"Process terminated unexpectedly with code {process.returncode}")
-       # Restart or handle error
-   ```
-
-3. **Resource limits:**
-   ```bash
-   ulimit -a  # Check system limits
-   # Increase if needed
-   ```
-
-#### Issue 5: Slow performance
-
-**Symptoms:**
-- High latency between requests
-- Low throughput
-
-**Solutions:**
-
-1. **Optimize message size:**
-   ```python
-   # Use smaller prompts and parameters
-   request = {
-       "jsonrpc": "2.0",
-       "method": "session/prompt",
-       "params": {
-           "prompt": short_prompt,  # Keep under 1000 chars
-           "session_id": session_id
-       },
-       "id": 3
-   }
-   ```
-
-2. **Batch requests:**
-   ```python
-   # Combine multiple operations where possible
-   ```
-
-3. **Profile communication:**
-   ```python
-   import time
-   
-   start = time.time()
-   # Send request and wait for response
-   elapsed = time.time() - start
-   print(f"Round-trip time: {elapsed:.3f}s")
    ```
 
 ## Next Steps and Implementation Roadmap
@@ -1274,46 +774,6 @@ If you encounter issues:
    - Automatic recovery strategies
    - Connection status indicators
 
-### Phase 4: Testing and Validation
-
-**Objective:** Ensure robust and reliable implementation
-
-**Tasks:**
-1. **Unit Tests** (`test/unit/`)
-   - Individual component testing
-   - Edge case coverage
-   - Error condition simulation
-
-2. **Integration Tests** (`test/integration/`)
-   - End-to-end workflow validation
-   - Performance benchmarking
-   - Stress testing
-
-3. **User Testing** (`test/usability/`)
-   - Real-world scenario validation
-   - User experience evaluation
-   - Accessibility testing
-
-### Phase 5: Deployment and Monitoring
-
-**Objective:** Production-ready deployment
-
-**Tasks:**
-1. **Containerization** (`Dockerfile`)
-   - Docker image creation
-   - Environment configuration
-   - Resource constraints
-
-2. **Monitoring** (`packages/sandbox/monitoring.py`)
-   - Metrics collection
-   - Health checks
-   - Alerting system
-
-3. **Documentation** (`docs/`)
-   - API reference
-   - Deployment guide
-   - Troubleshooting manual
-
 ## Conclusion
 
 This comprehensive discovery provides a complete foundation for implementing the Mistral Vibe ACP communication layer. The JSON-RPC 2.0 protocol over stdin/stdout offers a robust, extensible, and standards-compliant approach to agent communication.
@@ -1329,17 +789,3 @@ The proven patterns demonstrated in the working test can be directly applied to 
 - ✅ **Roadmap**: Clear implementation path
 
 The ACP communication layer is production-ready and provides all necessary functionality for building sophisticated agent-based applications with Mistral Vibe.
-=======
-3. **JSON decode errors**: Check that the subprocess stdout is properly line-buffered
-
-## Next Steps
-
-This discovery provides the foundation for Phase 2 implementation:
-
-1. **Sandbox Server**: Use the JSON-RPC pattern in `packages/sandbox/server.py`
-2. **WebSocket Bridge**: Convert JSON-RPC messages to WebSocket format
-3. **Session Management**: Implement session lifecycle handling
-4. **Streaming**: Forward `session/update` notifications to frontend
-
-The proven communication pattern can be directly applied to build the FastAPI WebSocket server specified in the requirements.
->>>>>>> main

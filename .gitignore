@@ -1,6 +1,6 @@
 .vscode
 .env
+.obsidian/
 node_modules/
 dist/
 .claude/
-.obsidian/
