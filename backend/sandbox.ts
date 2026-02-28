@@ -1,0 +1,117 @@
+import { config } from "dotenv";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Sandbox, Template, defaultBuildLogger } from "e2b";
+import { vibeTemplate } from "../packages/sandbox/template.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Load .env from project root (one level up from backend/)
+config({ path: resolve(__dirname, "../.env") });
+
+const CLI_PATH = resolve(__dirname, "../listennotes-cli/podcast_search.py");
+
+const SERVER_PORT = 8000;
+
+let cachedSandbox: Sandbox | null = null;
+let cachedUrl: string | null = null;
+
+async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
+  const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+  const LISTENNOTES_API_KEY = process.env.LISTENNOTES_API_KEY ?? "";
+
+  if (!MISTRAL_API_KEY) {
+    throw new Error("MISTRAL_API_KEY is required in .env");
+  }
+
+  console.log("Building template...");
+  await Template.build(vibeTemplate, "vibe-agent", {
+    onBuildLogs: defaultBuildLogger(),
+  });
+
+  console.log("Creating sandbox...");
+  const sandbox = await Sandbox.create("vibe-agent", {
+    envs: { MISTRAL_API_KEY, LISTENNOTES_API_KEY },
+    timeoutMs: 300_000,
+  });
+  console.log(`Sandbox created: ${sandbox.sandboxId}`);
+
+  await sandbox.files.write(
+    "/home/user/.env",
+    `MISTRAL_API_KEY=${MISTRAL_API_KEY}\nLISTENNOTES_API_KEY=${LISTENNOTES_API_KEY}\n`
+  );
+
+  const cliSource = readFileSync(CLI_PATH, "utf-8");
+  await sandbox.files.write("/usr/local/bin/podcast-search", cliSource);
+  await sandbox.commands.run("chmod +x /usr/local/bin/podcast-search");
+
+  const systemPrompt = readFileSync(
+    resolve(__dirname, "../packages/sandbox/prompts/podcast-agent.md"),
+    "utf-8"
+  );
+  await sandbox.commands.run("mkdir -p /home/user/.vibe/prompts");
+  await sandbox.files.write(
+    "/home/user/.vibe/prompts/podcast-agent.md",
+    systemPrompt
+  );
+
+  const host = sandbox.getHost(SERVER_PORT);
+  const url = `https://${host}`;
+  console.log(`Sandbox URL: ${url}`);
+
+  return { sandbox, url };
+}
+
+export async function initSandbox(): Promise<string> {
+  if (cachedSandbox && cachedUrl) {
+    const alive = await cachedSandbox.isRunning().catch(() => false);
+    if (alive) {
+      return cachedUrl;
+    }
+    console.log("Cached sandbox expired, creating new one...");
+    cachedSandbox = null;
+    cachedUrl = null;
+  }
+
+  const { sandbox, url } = await createSandbox();
+  cachedSandbox = sandbox;
+  cachedUrl = url;
+  return url;
+}
+
+export interface SandboxEvent {
+  type: string;
+  content: string | null;
+}
+
+export interface SandboxResponse {
+  session_id: string;
+  events: SandboxEvent[];
+}
+
+export async function sendQuery(
+  query: string,
+  sessionId?: string
+): Promise<SandboxResponse> {
+  const url = await initSandbox();
+
+  const body: Record<string, string> = { message: query };
+  if (sessionId) {
+    body.session_id = sessionId;
+  }
+
+  const resp = await fetch(`${url}/message`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Sandbox request failed: ${resp.status} — ${text}`);
+  }
+
+  return (await resp.json()) as SandboxResponse;
+}

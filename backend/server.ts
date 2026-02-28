@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import Bun from "bun";
 import type { IPodcast } from "./types";
+import { sendQuery } from "./sandbox";
 
 type Env = {
   Bindings: {
@@ -11,7 +12,6 @@ type Env = {
 
 const app = new Hono<Env>();
 const clients = new Set<any>();
-let submissionCount = 0;
 
 // Enable CORS for all routes
 app.use("*", cors());
@@ -53,16 +53,23 @@ app.post("/broadcast", async (c) => {
 
 app.post("/query", async (c) => {
   const body = await c.req.json<{ query: string }>();
-  submissionCount++;
 
-  console.log(`Received query (submission ${submissionCount}):`, body.query);
+  console.log(`Received query:`, body.query);
 
-  if (submissionCount === 1) {
-    // First submission: ask for clarification
+  try {
+    const result = await sendQuery(body.query);
+
+    console.log("Sandbox response:", JSON.stringify(result, null, 2));
+
+    // Extract the last assistant message
+    const assistantEvents = result.events.filter((e) => e.type === "assistant");
+    const lastMessage =
+      assistantEvents.at(-1)?.content ?? "No response from agent.";
+
     const broadcast = {
-      event_type: "clarification",
+      event_type: "message",
       payload: {
-        message: "Could you please provide more details about what kind of podcast content you're looking for?",
+        message: lastMessage,
       },
     };
 
@@ -71,38 +78,15 @@ app.post("/query", async (c) => {
     });
 
     return c.json({ success: true, response: broadcast });
-  } else {
-    // Second submission: return message and three podcast episodes
+  } catch (err) {
+    const errorMessage =
+      err instanceof Error ? err.message : "Unknown error occurred";
+    console.error("Query failed:", errorMessage);
+
     const broadcast = {
-      event_type: "results",
+      event_type: "message",
       payload: {
-        message: "Here are three podcast episodes based on your query:",
-        podcasts: [
-          {
-            name: "Software Engineering Daily",
-            src: "https://example.com/audio1.mp3",
-            duration: 3300,
-            cover_image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=128&h=128&fit=crop&q=80",
-            start_time: 322,
-            end_time: 752,
-          },
-          {
-            name: "Data Engineering Podcast",
-            src: "https://example.com/audio2.mp3",
-            duration: 2700,
-            cover_image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=128&h=128&fit=crop&q=80",
-            start_time: 848,
-            end_time: 1238,
-          },
-          {
-            name: "The Distributed Systems Pod",
-            src: "https://example.com/audio3.mp3",
-            duration: 3600,
-            cover_image: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=128&h=128&fit=crop&q=80",
-            start_time: 525,
-            end_time: 1020,
-          },
-        ],
+        message: `Error: ${errorMessage}`,
       },
     };
 
@@ -110,10 +94,7 @@ app.post("/query", async (c) => {
       ws.send(JSON.stringify(broadcast));
     });
 
-    // Reset counter for next cycle
-    submissionCount = 0;
-
-    return c.json({ success: true, response: broadcast });
+    return c.json({ success: false, error: errorMessage }, 500);
   }
 });
 

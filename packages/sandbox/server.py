@@ -69,7 +69,7 @@ def _get_or_create_session(session_id: str | None) -> tuple[str, AgentLoop]:
 
     _load_env()  # reload .env (may have been written after server start)
     sid = session_id or str(uuid.uuid4())
-    config = VibeConfig(auto_approve=True)
+    config = VibeConfig(auto_approve=True, system_prompt_id="podcast-agent")
     agent = AgentLoop(config=config)
     sessions[sid] = agent
     return sid, agent
