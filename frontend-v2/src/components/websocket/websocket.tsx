@@ -7,7 +7,13 @@ import { useEffect, useRef } from "react";
 const Websocket = () => {
   const { addPodcast, setPodcasts, setMessage } = usePodcasts();
 
-  const endpoint = process.env.NEXT_PUBLIC_WEBSOCKET_URL + "/ws";
+  const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
+  if (!wsUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_WEBSOCKET_URL is not set. Add it to frontend-v2/.env.local (e.g. ws://localhost:3001)"
+    );
+  }
+  const endpoint = wsUrl + "/ws";
 
   const socket = useRef<WebSocket | null>(null);
 
