@@ -44,6 +44,14 @@ export async function createVibesSandbox() {
   await sandbox.files.write("/usr/local/bin/podcast-search", cliSource);
   await sandbox.commands.run("chmod +x /usr/local/bin/podcast-search");
 
+  // Write custom system prompt for the podcast agent
+  const systemPrompt = readFileSync(
+    resolve(__dirname, "../packages/sandbox/prompts/podcast-agent.md"),
+    "utf-8"
+  );
+  await sandbox.commands.run("mkdir -p /home/user/.vibe/prompts");
+  await sandbox.files.write("/home/user/.vibe/prompts/podcast-agent.md", systemPrompt);
+
   const host = sandbox.getHost(SERVER_PORT);
   const url = `https://${host}`;
   console.log(`Public URL: ${url}`);
@@ -58,14 +66,13 @@ async function main() {
     sandbox = result.sandbox;
     const { url } = result;
 
-    // Test: use ListenNotes CLI with real API key
-    const testMessage =
-      'Use the podcast-search CLI to search for "kafka" podcasts with --output summary. The LISTENNOTES_API_KEY env var is already set. Run: podcast-search "kafka" --output summary';
-    console.log(`\nSending: "${testMessage}"`);
+    // Send a natural-language user query — the system prompt handles the rest
+    const userQuery = process.argv[2] || "I'm interested in Kafka";
+    console.log(`\nSending: "${userQuery}"`);
     const resp = await fetch(`${url}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: testMessage }),
+      body: JSON.stringify({ message: userQuery }),
       signal: AbortSignal.timeout(120_000),
     });
 
