@@ -6,47 +6,48 @@ import { PodcastClipCard } from "@/components/podcast-clip-card";
 import { FullPodcastCard } from "@/components/full-podcast-card";
 import { PodcastClipCardSkeleton } from "@/components/podcast-clip-card-skeleton";
 import Spacer from "@/components/spacer/spacer";
+import type { IPodcast } from "@/types/podcast";
 
 export default function Home() {
-  const clips = [
+  const clips: IPodcast[] = [
     {
-      podcastName: "Software Engineering Daily",
-      title: "Event-Driven Architecture with Kafka",
-      clipLength: "7:10",
-      clipStartTime: "05:22",
-      fullEpisodeLength: "55:00",
-      imageUrl:
+      name: "Event-Driven Architecture with Kafka",
+      src: "",
+      duration: 3300, // 55:00
+      cover_image:
         "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=128&h=128&fit=crop&q=80",
+      start_time: 322,  // 05:22
+      end_time: 752,     // 12:32 (7:10 clip)
     },
     {
-      podcastName: "Data Engineering Podcast",
-      title: "Kafka Streams for Real-Time Data Pipelines",
-      clipLength: "6:30",
-      clipStartTime: "14:08",
-      fullEpisodeLength: "45:00",
-      imageUrl:
+      name: "Kafka Streams for Real-Time Data Pipelines",
+      src: "",
+      duration: 2700, // 45:00
+      cover_image:
         "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=128&h=128&fit=crop&q=80",
+      start_time: 848,  // 14:08
+      end_time: 1238,   // 20:38 (6:30 clip)
     },
     {
-      podcastName: "The Distributed Systems Pod",
-      title: "Scaling Microservices with Apache Kafka",
-      clipLength: "8:15",
-      clipStartTime: "08:45",
-      fullEpisodeLength: "60:00",
-      imageUrl:
+      name: "Scaling Microservices with Apache Kafka",
+      src: "",
+      duration: 3600, // 60:00
+      cover_image:
         "https://images.unsplash.com/photo-1518770660439-4636190af475?w=128&h=128&fit=crop&q=80",
+      start_time: 525,  // 08:45
+      end_time: 1020,   // 17:00 (8:15 clip)
     },
   ];
 
-  const fullPodcasts = [
+  const fullPodcasts: IPodcast[] = [
     {
-      podcastName: "The Distributed Systems Pod",
-      title: "System Design for Real-Time Architectures",
-      currentTimeString: "12:45",
-      totalTimeString: "48:20",
-      progressValue: (12.75 / 48.33) * 100, // Roughly 26%
-      imageUrl:
+      name: "System Design for Real-Time Architectures",
+      src: "",
+      duration: 2900, // ~48:20
+      cover_image:
         "https://images.unsplash.com/photo-1518770660439-4636190af475?w=128&h=128&fit=crop&q=80",
+      start_time: 765,  // 12:45 (current position)
+      end_time: 2900,
     },
   ];
 
@@ -61,15 +62,7 @@ export default function Home() {
 
         <div className="flex flex-col gap-5 mb-12">
           {clips.map((clip, idx) => (
-            <PodcastClipCard
-              key={idx}
-              podcastName={clip.podcastName}
-              title={clip.title}
-              clipStartTime={clip.clipStartTime}
-              clipLength={clip.clipLength}
-              fullEpisodeLength={clip.fullEpisodeLength}
-              imageUrl={clip.imageUrl}
-            />
+            <PodcastClipCard key={idx} podcast={clip} />
           ))}
         </div>
 
@@ -79,15 +72,7 @@ export default function Home() {
 
         <div className="flex flex-col gap-5">
           {fullPodcasts.map((pod, idx) => (
-            <FullPodcastCard
-              key={idx}
-              podcastName={pod.podcastName}
-              title={pod.title}
-              currentTimeString={pod.currentTimeString}
-              totalTimeString={pod.totalTimeString}
-              progressValue={pod.progressValue}
-              imageUrl={pod.imageUrl}
-            />
+            <FullPodcastCard key={idx} podcast={pod} />
           ))}
         </div>
 
