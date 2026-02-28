@@ -1,12 +1,20 @@
 import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Sandbox, Template, defaultBuildLogger } from "e2b";
 import { vibeTemplate } from "../packages/sandbox/template.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const CLI_PATH = resolve(__dirname, "../listennotes-cli/podcast_search.py");
 
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY!;
 if (!MISTRAL_API_KEY) {
   console.error("MISTRAL_API_KEY is required");
   process.exit(1);
 }
+
+const LISTENNOTES_API_KEY = process.env.LISTENNOTES_API_KEY ?? "";
 
 const SERVER_PORT = 8000;
 
@@ -20,7 +28,7 @@ export async function createVibesSandbox() {
   // Create sandbox from template
   console.log("Creating sandbox...");
   const sandbox = await Sandbox.create("vibe-agent", {
-    envs: { MISTRAL_API_KEY },
+    envs: { MISTRAL_API_KEY, LISTENNOTES_API_KEY },
     timeoutMs: 300_000,
   });
   console.log(`Sandbox created: ${sandbox.sandboxId}`);
@@ -28,8 +36,13 @@ export async function createVibesSandbox() {
   // Write .env for the server's dotenv fallback (e2b envs may not reach start cmd)
   await sandbox.files.write(
     "/home/user/.env",
-    `MISTRAL_API_KEY=${MISTRAL_API_KEY}\n`
+    `MISTRAL_API_KEY=${MISTRAL_API_KEY}\nLISTENNOTES_API_KEY=${LISTENNOTES_API_KEY}\n`
   );
+
+  // Inject ListenNotes CLI into the sandbox
+  const cliSource = readFileSync(CLI_PATH, "utf-8");
+  await sandbox.files.write("/usr/local/bin/podcast-search", cliSource);
+  await sandbox.commands.run("chmod +x /usr/local/bin/podcast-search");
 
   const host = sandbox.getHost(SERVER_PORT);
   const url = `https://${host}`;
@@ -45,12 +58,14 @@ async function main() {
     sandbox = result.sandbox;
     const { url } = result;
 
-    // Test message
-    console.log('\nSending: "What is the capital of France?"');
+    // Test: use ListenNotes CLI with real API key
+    const testMessage =
+      'Use the podcast-search CLI to search for "kafka" podcasts with --output summary. The LISTENNOTES_API_KEY env var is already set. Run: podcast-search "kafka" --output summary';
+    console.log(`\nSending: "${testMessage}"`);
     const resp = await fetch(`${url}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "What is the capital of France?" }),
+      body: JSON.stringify({ message: testMessage }),
       signal: AbortSignal.timeout(120_000),
     });
 
