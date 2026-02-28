@@ -65,15 +65,13 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
 
 export async function initSandbox(): Promise<string> {
   if (cachedSandbox && cachedUrl) {
-    try {
-      // Check if sandbox is still alive
-      await cachedSandbox.isRunning();
+    const alive = await cachedSandbox.isRunning().catch(() => false);
+    if (alive) {
       return cachedUrl;
-    } catch {
-      console.log("Cached sandbox expired, creating new one...");
-      cachedSandbox = null;
-      cachedUrl = null;
     }
+    console.log("Cached sandbox expired, creating new one...");
+    cachedSandbox = null;
+    cachedUrl = null;
   }
 
   const { sandbox, url } = await createSandbox();
@@ -83,8 +81,8 @@ export async function initSandbox(): Promise<string> {
 }
 
 export interface SandboxEvent {
-  role: string;
-  content: string;
+  type: string;
+  content: string | null;
 }
 
 export interface SandboxResponse {
