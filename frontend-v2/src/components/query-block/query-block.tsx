@@ -15,26 +15,31 @@ const QueryBlock = ({
 }: QueryBlockProps) => {
   const [text, setText] = useState("");
   const partialTextRef = useRef("");
+  const baseTextRef = useRef("");
 
   // Handle real-time transcription (text deltas and final)
   const handleTranscript = useCallback((transcriptText: string, isFinal: boolean) => {
     if (isFinal) {
-      // Final transcription - append to text
-      setText((prev) => {
-        const newText = prev ? `${prev} ${transcriptText}` : transcriptText;
-        partialTextRef.current = "";
-        return newText;
-      });
+      // Final transcription - replace partial with final text
+      const base = baseTextRef.current;
+      const finalText = base ? `${base} ${transcriptText}` : transcriptText;
+      partialTextRef.current = "";
+      baseTextRef.current = "";
+      setText(finalText);
     } else {
-      // Partial transcription delta - accumulate in temp ref
-      partialTextRef.current += transcriptText;
-      setText((prev) => {
-        // Combine existing text with partial
-        if (prev && !prev.endsWith(partialTextRef.current)) {
-          return `${prev} ${partialTextRef.current}`;
-        }
-        return prev + partialTextRef.current;
-      });
+      // On first delta, capture the current text as the base
+      if (!partialTextRef.current) {
+        setText((currentText) => {
+          baseTextRef.current = currentText;
+          partialTextRef.current = transcriptText;
+          return currentText ? `${currentText} ${transcriptText}` : transcriptText;
+        });
+      } else {
+        // Subsequent deltas: rebuild as base + accumulated partial
+        partialTextRef.current += transcriptText;
+        const base = baseTextRef.current;
+        setText(base ? `${base} ${partialTextRef.current}` : partialTextRef.current);
+      }
     }
   }, []);
 
