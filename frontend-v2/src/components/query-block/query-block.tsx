@@ -41,15 +41,6 @@ const QueryBlock = ({
 
   return (
     <div className="w-full flex flex-col rounded-lg">
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Enter your query or use voice input..."
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        rows={4}
-      />
-      <Spacer size="small" />
       <div className="flex justify-between items-center">
         <SpeechInput
           apiEndpoint={apiEndpoint}
@@ -64,6 +55,15 @@ const QueryBlock = ({
           <ArrowUpRight className="size-4" />
         </button>
       </div>
+      <Spacer size="small" />
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Enter your query or use voice input..."
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        rows={4}
+      />
     </div>
   );
 };
