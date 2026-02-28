@@ -6,8 +6,6 @@
       "name": "backend",
       "dependencies": {
         "@mistralai/mistralai": "^1.14.1",
-        "@types/fluent-ffmpeg": "^2.1.28",
-        "fluent-ffmpeg": "^2.1.3",
         "hono": "^4.12.3",
       },
       "devDependencies": {
@@ -23,25 +21,15 @@
 
     "@types/bun": ["@types/bun@1.3.9", "", { "dependencies": { "bun-types": "1.3.9" } }, "sha512-KQ571yULOdWJiMH+RIWIOZ7B2RXQGpL1YQrBtLIV3FqDcCu6FsbFUBwhdKUlCKUpS3PJDsHlJ1QKlpxoVR+xtw=="],
 
-    "@types/fluent-ffmpeg": ["@types/fluent-ffmpeg@2.1.28", "", { "dependencies": { "@types/node": "*" } }, "sha512-5ovxsDwBcPfJ+eYs1I/ZpcYCnkce7pvH9AHSvrZllAp1ZPpTRDZAFjF3TRFbukxSgIYTTNYePbS0rKUmaxVbXw=="],
-
     "@types/node": ["@types/node@25.3.2", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-RpV6r/ij22zRRdyBPcxDeKAzH43phWVKEjL2iksqo1Vz3CuBUrgmPpPhALKiRfU7OMCmeeO9vECBMsV0hMTG8Q=="],
-
-    "async": ["async@0.2.10", "", {}, "sha512-eAkdoKxU6/LkKDBzLpT+t6Ff5EtfSF4wx1WfJiPEEV7WNLnDaRXk0oVysiEPm262roaachGexwUv94WhSgN5TQ=="],
 
     "bun-types": ["bun-types@1.3.9", "", { "dependencies": { "@types/node": "*" } }, "sha512-+UBWWOakIP4Tswh0Bt0QD0alpTY8cb5hvgiYeWCMet9YukHbzuruIEeXC2D7nMJPB12kbh8C7XJykSexEqGKJg=="],
 
-    "fluent-ffmpeg": ["fluent-ffmpeg@2.1.3", "", { "dependencies": { "async": "^0.2.9", "which": "^1.1.1" } }, "sha512-Be3narBNt2s6bsaqP6Jzq91heDgOEaDCJAXcE3qcma/EJBSy5FB4cvO31XBInuAuKBx8Kptf8dkhjK0IOru39Q=="],
-
     "hono": ["hono@4.12.3", "", {}, "sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg=="],
-
-    "isexe": ["isexe@2.0.0", "", {}, "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw=="],
 
     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "undici-types": ["undici-types@7.18.2", "", {}, "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w=="],
-
-    "which": ["which@1.3.1", "", { "dependencies": { "isexe": "^2.0.0" }, "bin": { "which": "./bin/which" } }, "sha512-HxJdYWq1MTIQbJ3nw0cqssHoTNU267KlrDuGZ1WYlxDStUtKUhOaJmh112/TZmHxxUfuJqPXSOm7tDyas0OSIQ=="],
 
     "ws": ["ws@8.19.0", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg=="],
 
