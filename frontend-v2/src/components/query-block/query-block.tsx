@@ -26,9 +26,30 @@ const QueryBlock = ({
     }
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (text.trim()) {
       onSubmit?.(text.trim());
+
+      try {
+        const response = await fetch("/api/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query: text.trim() }),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to submit query");
+        }
+
+        const data = await response.json();
+        console.log("Query submitted successfully:", data);
+
+        setText("");
+      } catch (error) {
+        console.error("Error submitting query:", error);
+      }
     }
   }, [text, onSubmit]);
 
