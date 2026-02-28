@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import Bun from "bun";
+import type { IPodcast } from "./types";
 
 type Env = {
   Bindings: {
@@ -29,11 +30,13 @@ app.get("/ws", (c) => {
 });
 
 app.post("/broadcast", async (c) => {
-  const body = await c.req.json<{ event_type: string; message: string }>();
+  const body = await c.req.json<{ event_type: string; podcast: IPodcast }>();
 
   const broadcast = {
     event_type: body.event_type,
-    message: body.message,
+    payload: {
+      podcast: body.podcast,
+    },
   };
 
   clients.forEach((ws) => {

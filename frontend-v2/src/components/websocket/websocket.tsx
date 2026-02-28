@@ -1,6 +1,7 @@
 "use client";
 
-import { IPodcast, usePodcasts } from "@/stores/usePodcasts";
+import { usePodcasts } from "@/stores/usePodcasts";
+import { IPodcast } from "@/types/podcast";
 import { useEffect, useRef } from "react";
 
 const Websocket = () => {
