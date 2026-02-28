@@ -178,6 +178,7 @@
   },
   "active": "c909f833410d8be2",
   "lastOpenFiles": [
+    "packages/sandbox/template.ts",
     "node_modules/e2b/README.md",
     "node_modules/@bufbuild/protobuf/README.md",
     "node_modules/@bufbuild/protobuf/package.json",
@@ -212,7 +213,6 @@
     "node_modules/path-key/readme.md",
     "node_modules/vscode-languageserver-types/README.md",
     "node_modules/openapi-fetch/README.md",
-    "node_modules/openapi-fetch/CONTRIBUTING.md",
-    "node_modules/openapi-fetch/CHANGELOG.md"
+    "node_modules/openapi-fetch/CONTRIBUTING.md"
   ]
 }
