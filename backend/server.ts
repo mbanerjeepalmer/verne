@@ -59,8 +59,10 @@ app.post("/query", async (c) => {
   try {
     const result = await sendQuery(body.query);
 
+    console.log("Sandbox response:", JSON.stringify(result, null, 2));
+
     // Extract the last assistant message
-    const assistantEvents = result.events.filter((e) => e.role === "assistant");
+    const assistantEvents = result.events.filter((e) => e.type === "assistant");
     const lastMessage =
       assistantEvents.at(-1)?.content ?? "No response from agent.";
 
