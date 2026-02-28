@@ -5,7 +5,7 @@ import { IPodcast } from "@/types/podcast";
 import { useEffect, useRef } from "react";
 
 const Websocket = () => {
-  const { addPodcast } = usePodcasts();
+  const { addPodcast, setPodcasts, setMessage } = usePodcasts();
 
   const endpoint = process.env.NEXT_PUBLIC_WEBSOCKET_URL + "/ws";
 
@@ -19,9 +19,25 @@ const Websocket = () => {
     };
 
     socket.current.onmessage = (event) => {
-      const podcast = JSON.parse(event.data)["payload"]["podcast"] as IPodcast;
-      addPodcast(podcast);
-      console.log("🎉 Websocket event received: ", JSON.parse(event.data));
+      const data = JSON.parse(event.data);
+      const eventType = data.event_type;
+      const payload = data.payload;
+
+      console.log("🎉 Websocket event received: ", data);
+
+      if (eventType === "clarification") {
+        // Handle clarification message
+        setMessage(payload.message);
+      } else if (eventType === "results") {
+        // Handle results with message and podcasts
+        setMessage(payload.message);
+        if (payload.podcasts && Array.isArray(payload.podcasts)) {
+          setPodcasts(payload.podcasts);
+        }
+      } else if (eventType === "podcast" && payload.podcast) {
+        // Handle single podcast (legacy support)
+        addPodcast(payload.podcast as IPodcast);
+      }
     };
 
     socket.current.onclose = async () => {};
@@ -30,7 +46,7 @@ const Websocket = () => {
       if (!socket.current) return;
       socket.current.close();
     };
-  }, []);
+  }, [addPodcast, setPodcasts, setMessage]);
 
   return <></>;
 };
