@@ -31,18 +31,13 @@ const Websocket = () => {
 
       console.log("🎉 Websocket event received: ", data);
 
-      if (eventType === "clarification") {
-        // Handle clarification message
+      if (eventType === "message") {
         setMessage(payload.message);
-      } else if (eventType === "results") {
-        // Handle results with message and podcasts
+      } else if (eventType === "episodes") {
         setMessage(payload.message);
         if (payload.podcasts && Array.isArray(payload.podcasts)) {
           setPodcasts(payload.podcasts);
         }
-      } else if (eventType === "podcast" && payload.podcast) {
-        // Handle single podcast (legacy support)
-        addPodcast(payload.podcast as IPodcast);
       }
     };
 
