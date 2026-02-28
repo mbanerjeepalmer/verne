@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { SpeechInput } from "../speech-input/speech-input";
 import { Button } from "../ui/button";
 import { ArrowUpRight } from "lucide-react";
@@ -8,21 +8,33 @@ import Spacer from "../spacer/spacer";
 
 interface QueryBlockProps {
   onSubmit?: (text: string) => void;
-  apiEndpoint?: string;
 }
 
 const QueryBlock = ({
   onSubmit,
-  apiEndpoint = "/api/audio",
 }: QueryBlockProps) => {
   const [text, setText] = useState("");
+  const partialTextRef = useRef("");
 
-  const handleTranscriptionSuccess = useCallback((response: unknown) => {
-    const result = response as { transcription?: string };
-    if (result.transcription) {
-      setText((prev) =>
-        prev ? `${prev} ${result.transcription}` : (result.transcription ?? ""),
-      );
+  // Handle real-time transcription (text deltas and final)
+  const handleTranscript = useCallback((transcriptText: string, isFinal: boolean) => {
+    if (isFinal) {
+      // Final transcription - append to text
+      setText((prev) => {
+        const newText = prev ? `${prev} ${transcriptText}` : transcriptText;
+        partialTextRef.current = "";
+        return newText;
+      });
+    } else {
+      // Partial transcription delta - accumulate in temp ref
+      partialTextRef.current += transcriptText;
+      setText((prev) => {
+        // Combine existing text with partial
+        if (prev && !prev.endsWith(partialTextRef.current)) {
+          return `${prev} ${partialTextRef.current}`;
+        }
+        return prev + partialTextRef.current;
+      });
     }
   }, []);
 
@@ -67,8 +79,7 @@ const QueryBlock = ({
     <div className="w-full flex flex-col rounded-lg">
       <div className="flex justify-between items-center">
         <SpeechInput
-          apiEndpoint={apiEndpoint}
-          onSuccess={handleTranscriptionSuccess}
+          onTranscript={handleTranscript}
         />
         <button
           className="flex items-center gap-1 border px-2 p-1 rounded-md bg-black text-white cursor-pointer hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
