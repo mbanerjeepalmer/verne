@@ -25,6 +25,12 @@ export async function createVibesSandbox() {
   });
   console.log(`Sandbox created: ${sandbox.sandboxId}`);
 
+  // Write .env for the server's dotenv fallback (e2b envs may not reach start cmd)
+  await sandbox.files.write(
+    "/home/user/.env",
+    `MISTRAL_API_KEY=${MISTRAL_API_KEY}\n`
+  );
+
   const host = sandbox.getHost(SERVER_PORT);
   const url = `https://${host}`;
   console.log(`Public URL: ${url}`);
