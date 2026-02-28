@@ -14,9 +14,8 @@ POST /broadcast
 
 ```json
 {
-  "event_type": "conversation" | "podcast",
-  "message": "<string - only applies to conversation>",
-  "podcast_data": {
+  "event_type": "<string>",
+  "podcast": {
     "name": "<string>",
     "src": "<string>",
     "duration": "<number>",
@@ -31,11 +30,10 @@ POST /broadcast
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `event_type` | string | Yes | Either `"conversation"` or `"podcast"` |
-| `message` | string | Conditional | Required when `event_type` is `"conversation"` |
-| `podcast_data` | object | Conditional | Required when `event_type` is `"podcast"` |
+| `event_type` | string | Yes | The type of event being broadcast |
+| `podcast` | object | Yes | The podcast data to broadcast |
 
-### Podcast Data Structure
+### Podcast Structure
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -46,23 +44,32 @@ POST /broadcast
 | `start_time` | number | Start timestamp in seconds |
 | `end_time` | number | End timestamp in seconds |
 
-## Example Requests
+## Broadcast Message
 
-### Conversation Event
+When a broadcast is sent, the following message is delivered to all connected WebSocket clients:
 
 ```json
 {
-  "event_type": "conversation",
-  "message": "Hello, this is a conversation message"
+  "event_type": "<string>",
+  "payload": {
+    "podcast": {
+      "name": "<string>",
+      "src": "<string>",
+      "duration": "<number>",
+      "cover_image": "<string>",
+      "start_time": "<number>",
+      "end_time": "<number>"
+    }
+  }
 }
 ```
 
-### Podcast Event
+## Example Request
 
 ```json
 {
   "event_type": "podcast",
-  "podcast_data": {
+  "podcast": {
     "name": "Tech Talk",
     "src": "https://example.com/audio.mp3",
     "duration": 3600,
@@ -71,3 +78,4 @@ POST /broadcast
     "end_time": 300
   }
 }
+```
