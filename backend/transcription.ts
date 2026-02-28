@@ -3,7 +3,7 @@
  *
  * Handles WebSocket connections for streaming audio transcription.
  * Receives PCM audio from browser (converted via Web Audio API) and
- * streams directly to Mistral SDK — no ffmpeg required.
+ * streams directly to Mistral SDK in real-time — no buffering.
  */
 
 import {
@@ -23,7 +23,7 @@ interface TranscriptionWebSocket {
  * Handle WebSocket connection for real-time transcription.
  *
  * Audio flow: Browser captures PCM 16-bit via Web Audio API → sends binary
- * chunks over WebSocket → backend streams them directly to Mistral Voxtral.
+ * chunks over WebSocket → backend streams them to Mistral Voxtral in real-time.
  */
 export async function handleTranscriptionWebSocket(ws: TranscriptionWebSocket) {
   console.log("[Transcription] Client connected");
@@ -37,14 +37,51 @@ export async function handleTranscriptionWebSocket(ws: TranscriptionWebSocket) {
     return;
   }
 
-  // Initialize Mistral client
   const client = new RealtimeTranscription({
     apiKey: MISTRAL_API_KEY,
     serverURL: process.env.MISTRAL_BASE_URL || "wss://api.mistral.ai",
   });
 
-  let pcmChunks: Uint8Array[] = [];
   let isRecording = false;
+
+  // Push-based async generator state for real-time streaming
+  let chunkQueue: Uint8Array[] = [];
+  let chunkResolve: (() => void) | null = null;
+  let streamDone = false;
+
+  async function* audioStream(): AsyncGenerator<Uint8Array> {
+    while (!streamDone) {
+      if (chunkQueue.length > 0) {
+        yield chunkQueue.shift()!;
+      } else {
+        await new Promise<void>((resolve) => {
+          chunkResolve = resolve;
+        });
+      }
+    }
+    // Yield any remaining chunks after stream ends
+    while (chunkQueue.length > 0) {
+      yield chunkQueue.shift()!;
+    }
+  }
+
+  function pushChunk(chunk: Uint8Array) {
+    chunkQueue.push(chunk);
+    if (chunkResolve) {
+      const resolve = chunkResolve;
+      chunkResolve = null;
+      resolve();
+    }
+  }
+
+  function endStream() {
+    streamDone = true;
+    if (chunkResolve) {
+      const resolve = chunkResolve;
+      chunkResolve = null;
+      resolve();
+    }
+  }
 
   // Send ready signal
   ws.send(JSON.stringify({
@@ -60,76 +97,68 @@ export async function handleTranscriptionWebSocket(ws: TranscriptionWebSocket) {
 
         if (data.type === "transcription.start") {
           console.log("[Transcription] Start signal received");
-          pcmChunks = [];
           isRecording = true;
+          chunkQueue = [];
+          streamDone = false;
+
+          // Start streaming to Mistral immediately in the background
+          (async () => {
+            try {
+              for await (const event of client.transcribeStream(
+                audioStream(),
+                "voxtral-mini-transcribe-realtime-2602",
+                {
+                  audioFormat: {
+                    encoding: AudioEncoding.PcmS16le,
+                    sampleRate: SAMPLE_RATE,
+                  },
+                }
+              )) {
+                if (event.type === "transcription.text.delta") {
+                  ws.send(JSON.stringify({
+                    type: "transcription.delta",
+                    text: event.text
+                  }));
+                  console.log("[Transcription] Delta:", event.text);
+                }
+
+                if (event.type === "transcription.done") {
+                  ws.send(JSON.stringify({
+                    type: "transcription.done",
+                    text: event.text
+                  }));
+                  console.log("[Transcription] Done");
+                  break;
+                }
+
+                if (event.type === "error") {
+                  const errorMessage = typeof event.error.message === "string"
+                    ? event.error.message
+                    : JSON.stringify(event.error.message);
+
+                  ws.send(JSON.stringify({
+                    type: "error",
+                    message: errorMessage
+                  }));
+                  console.error("[Transcription] Error:", errorMessage);
+                  break;
+                }
+              }
+            } catch (error) {
+              console.error("[Transcription] Stream error:", error);
+              ws.send(JSON.stringify({
+                type: "error",
+                message: error instanceof Error ? error.message : "Transcription stream error"
+              }));
+            }
+          })();
           return;
         }
 
         if (data.type === "transcription.stop") {
-          console.log("[Transcription] Stop signal received, processing audio");
+          console.log("[Transcription] Stop signal received");
           isRecording = false;
-
-          if (pcmChunks.length === 0) {
-            ws.send(JSON.stringify({
-              type: "error",
-              message: "No audio data received"
-            }));
-            return;
-          }
-
-          // Create async generator from collected PCM chunks
-          const chunks = pcmChunks;
-          pcmChunks = [];
-
-          async function* audioStream(): AsyncGenerator<Uint8Array> {
-            for (const chunk of chunks) {
-              yield chunk;
-            }
-          }
-
-          // Stream to Mistral
-          console.log(`[Transcription] Streaming ${chunks.length} PCM chunks to Mistral...`);
-
-          for await (const event of client.transcribeStream(
-            audioStream(),
-            "voxtral-mini-transcribe-realtime-2602",
-            {
-              audioFormat: {
-                encoding: AudioEncoding.PcmS16le,
-                sampleRate: SAMPLE_RATE,
-              },
-            }
-          )) {
-            if (event.type === "transcription.text.delta") {
-              ws.send(JSON.stringify({
-                type: "transcription.delta",
-                text: event.text
-              }));
-              console.log("[Transcription] Delta:", event.text);
-            }
-
-            if (event.type === "transcription.done") {
-              ws.send(JSON.stringify({
-                type: "transcription.done",
-                text: event.text
-              }));
-              console.log("[Transcription] Done");
-              break;
-            }
-
-            if (event.type === "error") {
-              const errorMessage = typeof event.error.message === "string"
-                ? event.error.message
-                : JSON.stringify(event.error.message);
-
-              ws.send(JSON.stringify({
-                type: "error",
-                message: errorMessage
-              }));
-              console.error("[Transcription] Error:", errorMessage);
-              break;
-            }
-          }
+          endStream();
           return;
         }
       }
@@ -137,12 +166,10 @@ export async function handleTranscriptionWebSocket(ws: TranscriptionWebSocket) {
       // Handle binary messages (PCM audio chunks from browser)
       if (Buffer.isBuffer(message)) {
         if (!isRecording) {
-          console.log("[Transcription] Received audio before start signal, ignoring");
           return;
         }
 
-        pcmChunks.push(new Uint8Array(message));
-        console.log(`[Transcription] PCM chunk received: ${message.length} bytes (chunks: ${pcmChunks.length})`);
+        pushChunk(new Uint8Array(message));
       }
 
     } catch (error) {

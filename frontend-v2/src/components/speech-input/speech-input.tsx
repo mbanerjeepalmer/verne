@@ -80,7 +80,7 @@ export function SpeechInput({
             onTranscript?.(data.text, false);
           } else if (data.type === "transcription.done") {
             onTranscript?.(data.text, true);
-            setStatus("success");
+            setStatus("idle");
           } else if (data.type === "error") {
             console.error("[SpeechInput] Error:", data.message);
             setStatus("error");
