@@ -25,9 +25,53 @@ def _load_env():
 import logging
 import traceback
 
+logging.basicConfig(level=logging.INFO)
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+
+# Lazy OTEL initialization — env vars are injected by E2B after the template
+# snapshot is taken, so module-level checks would always miss them.
+_otel_initialized = False
+
+
+def _init_otel():
+    """Configure OpenTelemetry instrumentation for Mistral → Langfuse (once)."""
+    global _otel_initialized
+    if _otel_initialized:
+        return
+    _otel_initialized = True
+
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+    if not endpoint:
+        logging.info("OTEL not configured, skipping instrumentation")
+        return
+
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.mistralai import MistralAiInstrumentor
+
+    # Parse headers from env (format: "key=value,key2=value2")
+    raw_headers = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
+    headers = {}
+    for pair in raw_headers.split(","):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            headers[k.strip()] = v.strip()
+
+    logging.info(f"OTEL endpoint: {endpoint}")
+    logging.info(f"OTEL headers configured: {list(headers.keys())}")
+
+    exporter = OTLPSpanExporter(endpoint=endpoint, headers=headers)
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    MistralAiInstrumentor().instrument()
+    logging.info("MistralAI OpenTelemetry instrumentation enabled")
 
 # Unlock config paths before importing AgentLoop (required by vibe SDK)
 from vibe.core.paths.config_paths import unlock_config_paths
@@ -68,6 +112,7 @@ def _get_or_create_session(session_id: str | None) -> tuple[str, AgentLoop]:
         return session_id, sessions[session_id]
 
     _load_env()  # reload .env (may have been written after server start)
+    _init_otel()  # configure tracing before creating Mistral client
     sid = session_id or str(uuid.uuid4())
     config = VibeConfig(auto_approve=True, system_prompt_id="podcast-agent")
     agent = AgentLoop(config=config)

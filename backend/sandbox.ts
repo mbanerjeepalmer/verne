@@ -7,8 +7,8 @@ import { vibeTemplate } from "../packages/sandbox/template.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load .env from project root (one level up from backend/)
-config({ path: resolve(__dirname, "../.env") });
+// Load .env from backend/ directory
+config({ path: resolve(__dirname, ".env") });
 
 const CLI_PATH = resolve(__dirname, "../listennotes-cli/podcast_search.py");
 const API_MODULE_PATH = resolve(__dirname, "../listennotes-cli/listennotes_api.py");
@@ -21,10 +21,17 @@ let cachedUrl: string | null = null;
 async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
   const LISTENNOTES_API_KEY = process.env.LISTENNOTES_API_KEY ?? "";
+  const LANGFUSE_PUBLIC_KEY = process.env.LANGFUSE_PUBLIC_KEY ?? "";
+  const LANGFUSE_SECRET_KEY = process.env.LANGFUSE_SECRET_KEY ?? "";
 
   if (!MISTRAL_API_KEY) {
     throw new Error("MISTRAL_API_KEY is required in .env");
   }
+
+  // Build OTEL auth header for Langfuse (Base64 of public:secret)
+  const langfuseOtelAuth = LANGFUSE_PUBLIC_KEY && LANGFUSE_SECRET_KEY
+    ? Buffer.from(`${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}`).toString("base64")
+    : "";
 
   console.log("Building template...");
   await Template.build(vibeTemplate, "vibe-agent", {
@@ -33,15 +40,27 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
 
   console.log("Creating sandbox...");
   const sandbox = await Sandbox.create("vibe-agent", {
-    envs: { MISTRAL_API_KEY, LISTENNOTES_API_KEY },
+    envs: {
+      MISTRAL_API_KEY,
+      LISTENNOTES_API_KEY,
+      ...(langfuseOtelAuth && {
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "https://cloud.langfuse.com/api/public/otel/v1/traces",
+        OTEL_EXPORTER_OTLP_TRACES_HEADERS: `Authorization=Basic ${langfuseOtelAuth}`,
+      }),
+    },
     timeoutMs: 300_000,
   });
   console.log(`Sandbox created: ${sandbox.sandboxId}`);
 
-  await sandbox.files.write(
-    "/home/user/.env",
-    `MISTRAL_API_KEY=${MISTRAL_API_KEY}\nLISTENNOTES_API_KEY=${LISTENNOTES_API_KEY}\n`
-  );
+  const envLines = [
+    `MISTRAL_API_KEY=${MISTRAL_API_KEY}`,
+    `LISTENNOTES_API_KEY=${LISTENNOTES_API_KEY}`,
+    ...(langfuseOtelAuth ? [
+      `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://cloud.langfuse.com/api/public/otel/v1/traces`,
+      `OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Basic ${langfuseOtelAuth}`,
+    ] : []),
+  ];
+  await sandbox.files.write("/home/user/.env", envLines.join("\n") + "\n");
 
   const cliSource = readFileSync(CLI_PATH, "utf-8");
   await sandbox.files.write("/usr/local/bin/podcast-search", cliSource);
