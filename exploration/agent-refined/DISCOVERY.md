@@ -142,3 +142,158 @@ The `test_vibe_acp_subprocess.py` script demonstrates:
 - Proper JSON-RPC message handling
 
 This confirms that Option A (vibe-acp subprocess) uses **JSON-RPC over stdin/stdout** for communication, with structured requests/responses and streaming notifications for real-time agent interactions.
+
+### How to Run the Demonstration
+
+```bash
+# From the project root directory
+cd exploration/agent-refined
+
+# Run with uv (recommended)
+uv run python test_vibe_acp_subprocess.py
+
+# Or run with regular Python (ensure venv is activated)
+source ../../.venv/bin/activate
+python test_vibe_acp_subprocess.py
+```
+
+### Expected Output
+
+The script will show:
+
+1. **Process Management**: Starting the `vibe-acp` subprocess
+2. **JSON-RPC Communication**: Request/response cycle with message IDs
+3. **Session Lifecycle**: Initialize → Create Session → Send Prompt
+4. **Streaming Updates**: Multiple `session/update` notifications
+5. **Completion**: Final prompt response with stop reason
+
+### Key Output Examples
+
+```
+🔹 Starting vibe-acp subprocess...
+✅ vibe-acp subprocess started
+
+📤 JSON-RPC Request (1): initialize
+📥 JSON-RPC Response: 1
+✅ Initialization successful
+
+🔹 Creating new session...
+📤 JSON-RPC Request (2): session/new
+📥 JSON-RPC Response: 2
+✅ Session created: 57a0ef04-98bb-41c9-973d-d9e7f052cdd6
+
+🔹 Sending prompt: 'Hello, what can you do?'
+📤 JSON-RPC Request (3): session/prompt
+📥 JSON-RPC Response: session/update
+📥 JSON-RPC Response: session/update
+... (multiple streaming updates) ...
+📥 JSON-RPC Response: 3
+✅ Prompt completed. Stop reason: end_turn
+```
+
+### Troubleshooting
+
+If you encounter issues:
+
+1. **vibe-acp not found**: Ensure mistral-vibe is installed in the virtual environment
+   ```bash
+   cd ../..
+   uv pip install mistral-vibe
+   ```
+
+2. **Permission errors**: Make sure the `.venv/bin/vibe-acp` is executable
+   ```bash
+   chmod +x .venv/bin/vibe-acp
+   ```
+
+3. **JSON decode errors**: Check that the subprocess stdout is properly line-buffered
+
+## Next Steps
+
+This discovery provides the foundation for Phase 2 implementation:
+
+1. **Sandbox Server**: Use the JSON-RPC pattern in `packages/sandbox/server.py`
+2. **WebSocket Bridge**: Convert JSON-RPC messages to WebSocket format
+3. **Session Management**: Implement session lifecycle handling
+4. **Streaming**: Forward `session/update` notifications to frontend
+
+The proven communication pattern can be directly applied to build the FastAPI WebSocket server specified in the requirements.
+<<<<<<< HEAD
+=======
+
+### How to Run the Demonstration
+
+```bash
+# From the project root directory
+cd exploration/agent-refined
+
+# Run with uv (recommended)
+uv run python test_vibe_acp_subprocess.py
+
+# Or run with regular Python (ensure venv is activated)
+source ../../.venv/bin/activate
+python test_vibe_acp_subprocess.py
+```
+
+### Expected Output
+
+The script will show:
+
+1. **Process Management**: Starting the `vibe-acp` subprocess
+2. **JSON-RPC Communication**: Request/response cycle with message IDs
+3. **Session Lifecycle**: Initialize → Create Session → Send Prompt
+4. **Streaming Updates**: Multiple `session/update` notifications
+5. **Completion**: Final prompt response with stop reason
+
+### Key Output Examples
+
+```
+🔹 Starting vibe-acp subprocess...
+✅ vibe-acp subprocess started
+
+📤 JSON-RPC Request (1): initialize
+📥 JSON-RPC Response: 1
+✅ Initialization successful
+
+🔹 Creating new session...
+📤 JSON-RPC Request (2): session/new
+📥 JSON-RPC Response: 2
+✅ Session created: 57a0ef04-98bb-41c9-973d-d9e7f052cdd6
+
+🔹 Sending prompt: 'Hello, what can you do?'
+📤 JSON-RPC Request (3): session/prompt
+📥 JSON-RPC Response: session/update
+📥 JSON-RPC Response: session/update
+... (multiple streaming updates) ...
+📥 JSON-RPC Response: 3
+✅ Prompt completed. Stop reason: end_turn
+```
+
+### Troubleshooting
+
+If you encounter issues:
+
+1. **vibe-acp not found**: Ensure mistral-vibe is installed in the virtual environment
+   ```bash
+   cd ../..
+   uv pip install mistral-vibe
+   ```
+
+2. **Permission errors**: Make sure the `.venv/bin/vibe-acp` is executable
+   ```bash
+   chmod +x .venv/bin/vibe-acp
+   ```
+
+3. **JSON decode errors**: Check that the subprocess stdout is properly line-buffered
+
+## Next Steps
+
+This discovery provides the foundation for Phase 2 implementation:
+
+1. **Sandbox Server**: Use the JSON-RPC pattern in `packages/sandbox/server.py`
+2. **WebSocket Bridge**: Convert JSON-RPC messages to WebSocket format
+3. **Session Management**: Implement session lifecycle handling
+4. **Streaming**: Forward `session/update` notifications to frontend
+
+The proven communication pattern can be directly applied to build the FastAPI WebSocket server specified in the requirements.
+>>>>>>> ee41d2c (Add run instructions to DISCOVERY.md)
