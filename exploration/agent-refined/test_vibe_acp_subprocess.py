@@ -177,7 +177,11 @@ class VibeAcpSubprocessClient:
             
             if response.get('error'):
                 raise RuntimeError(f"Prompt error: {response.get('error')}")
-            elif response.get('method') == 'session/update':
+<<<<<<< HEAD
+            elif response.get('method') == 'session_update':
+=======
+            elif response.get('method') == 'session_update':
+>>>>>>> main
                 # Handle streaming session updates
                 params = response.get('params', {})
                 if update_count < max_updates_to_show:

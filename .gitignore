@@ -1,4 +1,11 @@
+.vscode
+>>>>>>> main
+=======
 .env
 node_modules/
 dist/
 .claude/
+.vscode
+=======
+.vscode
+>>>>>>> main

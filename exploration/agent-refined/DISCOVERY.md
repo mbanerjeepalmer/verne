@@ -1,109 +1,151 @@
-# Mistral Vibe ACP Communication Discovery - Comprehensive Guide
+# Mistral Vibe ACP Communication Discovery
 
-This comprehensive document provides an in-depth analysis answering Q2: "How do we talk to it?" for Option A (`vibe-acp` subprocess). It covers all aspects of the Agent Communication Protocol (ACP) with detailed explanations, examples, and implementation guidance.
+This document answers Q2: "How do we talk to it?" for Option A (`vibe-acp` subprocess).
 
-## Executive Summary
+## Communication Method
 
-The Mistral Vibe ACP uses **JSON-RPC 2.0 over stdin/stdout** for inter-process communication. This protocol enables structured request/response interactions combined with real-time streaming notifications, creating a robust foundation for agent-based applications.
+**Protocol**: JSON-RPC 2.0 over stdin/stdout with ACP (Agent Communication Protocol)
 
-## Communication Architecture
+## Key Components
 
-### 1. Process Management Layer
+### 1. Process Management
+- `vibe-acp` runs as a subprocess
+- Communicates via line-buffered stdin/stdout
+- Uses JSON-RPC 2.0 message format
 
-The communication stack consists of three layers:
+### 2. Message Structure
 
-**Layer 1: Process Execution**
-- `vibe-acp` executable runs as a detached subprocess
-- Managed via Python's `asyncio.create_subprocess_exec()`
-- Requires stdin/stdout pipes for bidirectional communication
-- Process lifecycle: spawn → initialize → session management → termination
-
-**Layer 2: Transport Protocol**
-- Line-buffered I/O for message framing
-- UTF-8 encoded JSON messages
-- Newline (`\n`) delimiter for message boundaries
-- Automatic buffer management by asyncio streams
-
-**Layer 3: Application Protocol**
-- JSON-RPC 2.0 specification compliance
-- Extended with ACP-specific methods and notifications
-- Request/response correlation via message IDs
-- Structured error handling
-
-### 2. Message Structure Deep Dive
-
-#### Complete Request Format Specification
-
+#### Request Format
 ```json
 {
-  "jsonrpc": "2.0",                    // Protocol version (required)
-  "method": "method_name",             // RPC method to invoke (required)
-  "params": {                          // Method parameters (optional)
-    "key1": "value1",
-    "key2": ["array", "values"],
-    "key3": {"nested": "object"}
-  },
-  "id": 1                              // Request identifier (required)
+  "jsonrpc": "2.0",
+  "method": "method_name",
+  "params": {},
+  "id": 1
 }
 ```
 
-**Field Requirements:**
-- `jsonrpc`: Must be exactly "2.0"
-- `method`: String identifying the RPC method
-- `params`: Object containing method-specific parameters
-- `id`: Integer or string for request/response correlation
-
-#### Complete Response Format Specification
-
+#### Response Format
 ```json
-{
-  "jsonrpc": "2.0",                    // Protocol version (required)
-  "id": 1,                              // Matches request ID (required)
-  "result": {                          // Successful result (optional)
-    "status": "success",
-    "data": {"key": "value"},
-    "timestamp": "2024-01-01T00:00:00Z"
-  }
-}
-
-// OR (for errors)
-
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "error": {                          // Error details (optional)
-    "code": -32601,                     // Error code
-    "message": "Method not found",     // Human-readable message
-    "data": {"suggestion": "Check method name spelling"}
-  }
+  "result": {}
 }
 ```
 
-#### Notification Format with All Fields
-
+#### Notification Format (Streaming)
 ```json
 {
-  "jsonrpc": "2.0",                    // Protocol version (required)
-  "method": "session/update",         // Notification method (required)
-  "params": {                          // Notification payload (required)
-    "sessionId": "57a0ef04-98bb-41c9-973d-d9e7f052cdd6",
-    "timestamp": "2024-01-01T00:00:00.000Z",
-    "update": {                          // Update content (required)
-      "sessionUpdate": "agent_message_chunk",  // Update type (required)
-      "sequence": 42,                      // Sequence number
-      "content": {                        // Type-specific content (required)
-        "type": "text",
-        "text": "Hello, I'm Mistral Vibe!",
-        "metadata": {
-          "confidence": 0.95,
-          "tokens": ["Hello", ",", "I'm", "Mistral", "Vibe", "!"]
-        }
-      }
+  "jsonrpc": "2.0",
+  "method": "session/update",
+  "params": {
+    "sessionId": "...",
+    "update": {
+      "sessionUpdate": "update_type",
+      "content": {...}
+>>>>>>> main
+=======
+# Mistral Vibe ACP Communication Discovery
+
+This document answers Q2: "How do we talk to it?" for Option A (`vibe-acp` subprocess).
+
+## Communication Method
+
+**Protocol**: JSON-RPC 2.0 over stdin/stdout with ACP (Agent Communication Protocol)
+
+## Key Components
+
+### 1. Process Management
+- `vibe-acp` runs as a subprocess
+- Communicates via line-buffered stdin/stdout
+- Uses JSON-RPC 2.0 message format
+
+### 2. Message Structure
+
+#### Request Format
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "method_name",
+  "params": {},
+  "id": 1
+}
+```
+
+#### Response Format
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {}
+}
+```
+
+#### Notification Format (Streaming)
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "session/update",
+  "params": {
+    "sessionId": "...",
+    "update": {
+      "sessionUpdate": "update_type",
+      "content": {...}
+=======
+# Mistral Vibe ACP Communication Discovery
+
+This document answers Q2: "How do we talk to it?" for Option A (`vibe-acp` subprocess).
+
+## Communication Method
+
+**Protocol**: JSON-RPC 2.0 over stdin/stdout with ACP (Agent Communication Protocol)
+
+## Key Components
+
+### 1. Process Management
+- `vibe-acp` runs as a subprocess
+- Communicates via line-buffered stdin/stdout
+- Uses JSON-RPC 2.0 message format
+
+### 2. Message Structure
+
+#### Request Format
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "method_name",
+  "params": {},
+  "id": 1
+}
+```
+
+#### Response Format
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {}
+}
+```
+
+#### Notification Format (Streaming)
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "session/update",
+  "params": {
+    "sessionId": "...",
+    "update": {
+      "sessionUpdate": "update_type",
+      "content": {...}
+>>>>>>> main
     }
   }
 }
 ```
 
+<<<<<<< HEAD
 ### 3. Core Methods Encyclopedia
 
 #### `initialize` - Protocol Handshake
@@ -221,18 +263,55 @@ The agent provides real-time updates through `session/update` notifications:
 #### Update Type Catalog
 
 **`agent_message_chunk`** - Agent text output
+=======
+### 3. Core Methods
+
+#### `initialize`
+- Establishes ACP connection
+- Parameters: `protocol_version`, `client_capabilities`, `client_info`
+- Returns: Agent capabilities, protocol version, agent info
+
+#### `session/new`
+- Creates a new agent session
+- Parameters: `cwd`, `mcpServers`
+- Returns: `sessionId`, models, modes, config options
+
+#### `session/prompt`
+- Sends user input to the agent
+- Parameters: `prompt`, `session_id`
+- Returns: `stop_reason` when complete
+- Triggers streaming `session/update` notifications
+
+### 4. Streaming Updates
+
+The agent sends real-time updates via `session/update` notifications:
+
+- **`agent_message_chunk`**: Agent's text responses
+- **`agent_thought_chunk`**: Agent's internal reasoning
+- **`tool_call_update`**: Tool execution status
+- **`compact_start`/`compact_end`**: Session lifecycle
+- **`available_commands_update`**: Available commands
+
+### 5. Session Update Structure
+
+>>>>>>> main
 ```json
 {
   "sessionUpdate": "agent_message_chunk",
   "content": {
     "type": "text",
+<<<<<<< HEAD
     "text": "Hello there!",
     "chunk_id": 1,
     "is_final": false
+=======
+    "text": "Hello, I'm Mistral Vibe!"
+>>>>>>> main
   }
 }
 ```
 
+<<<<<<< HEAD
 **`agent_thought_chunk`** - Internal reasoning process
 ```json
 {
@@ -831,10 +910,79 @@ From the project root:
 
 ```bash
 .venv/bin/python exploration/agent-refined/test_vibe_acp_subprocess.py
+=======
+## Implementation Example
+
+```python
+# Start subprocess
+process = await asyncio.create_subprocess_exec(
+    "vibe-acp",
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE
+)
+
+# Send initialize request
+request = {
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {"protocol_version": 1, "client_capabilities": {...}},
+    "id": 1
+}
+process.stdin.write((json.dumps(request) + "\n").encode())
+
+# Read responses
+while True:
+    line = await process.stdout.readline()
+    response = json.loads(line)
+    
+    if response.get("method") == "session/update":
+        # Handle streaming update
+        update_type = response["params"]["update"]["sessionUpdate"]
+        content = response["params"]["update"]["content"]
+        
+    elif response.get("id"):
+        # Handle request response
+        result = response["result"]
+```
+
+## Key Findings
+
+1. **Protocol**: JSON-RPC 2.0 with ACP extensions
+2. **Transport**: Line-buffered stdin/stdout
+3. **Methods**: `initialize`, `session/new`, `session/prompt`, etc.
+4. **Streaming**: Real-time updates via `session/update` notifications
+5. **Session Management**: Each interaction requires a `sessionId`
+6. **Error Handling**: JSON-RPC error responses for failed requests
+
+## Working Test
+
+The `test_vibe_acp_subprocess.py` script demonstrates:
+- Starting `vibe-acp` as subprocess
+- Initializing ACP connection
+- Creating sessions
+- Sending prompts and receiving streaming responses
+- Proper JSON-RPC message handling
+
+This confirms that Option A (vibe-acp subprocess) uses **JSON-RPC over stdin/stdout** for communication, with structured requests/responses and streaming notifications for real-time agent interactions.
+
+### How to Run the Demonstration
+
+```bash
+# From the project root directory
+cd exploration/agent-refined
+
+# Run with uv (recommended)
+uv run python test_vibe_acp_subprocess.py
+
+# Or run with regular Python (ensure venv is activated)
+source ../../.venv/bin/activate
+python test_vibe_acp_subprocess.py
+>>>>>>> main
 ```
 
 ### Expected Output
 
+<<<<<<< HEAD
 ```
 🚀 Testing vibe-acp Subprocess Communication
 ==================================================
@@ -918,10 +1066,56 @@ Key findings for Q2:
 **Solutions:**
 
 1. **Make executable:**
+=======
+The script will show:
+
+1. **Process Management**: Starting the `vibe-acp` subprocess
+2. **JSON-RPC Communication**: Request/response cycle with message IDs
+3. **Session Lifecycle**: Initialize → Create Session → Send Prompt
+4. **Streaming Updates**: Multiple `session/update` notifications
+5. **Completion**: Final prompt response with stop reason
+
+### Key Output Examples
+
+```
+🔹 Starting vibe-acp subprocess...
+✅ vibe-acp subprocess started
+
+📤 JSON-RPC Request (1): initialize
+📥 JSON-RPC Response: 1
+✅ Initialization successful
+
+🔹 Creating new session...
+📤 JSON-RPC Request (2): session/new
+📥 JSON-RPC Response: 2
+✅ Session created: 57a0ef04-98bb-41c9-973d-d9e7f052cdd6
+
+🔹 Sending prompt: 'Hello, what can you do?'
+📤 JSON-RPC Request (3): session/prompt
+📥 JSON-RPC Response: session/update
+📥 JSON-RPC Response: session/update
+... (multiple streaming updates) ...
+📥 JSON-RPC Response: 3
+✅ Prompt completed. Stop reason: end_turn
+```
+
+### Troubleshooting
+
+If you encounter issues:
+
+1. **vibe-acp not found**: Ensure mistral-vibe is installed in the virtual environment
+   ```bash
+   cd ../..
+   uv pip install mistral-vibe
+   ```
+
+2. **Permission errors**: Make sure the `.venv/bin/vibe-acp` is executable
+>>>>>>> main
    ```bash
    chmod +x .venv/bin/vibe-acp
    ```
 
+<<<<<<< HEAD
 2. **Check file permissions:**
    ```bash
    ls -la .venv/bin/vibe-acp
@@ -1135,3 +1329,17 @@ The proven patterns demonstrated in the working test can be directly applied to 
 - ✅ **Roadmap**: Clear implementation path
 
 The ACP communication layer is production-ready and provides all necessary functionality for building sophisticated agent-based applications with Mistral Vibe.
+=======
+3. **JSON decode errors**: Check that the subprocess stdout is properly line-buffered
+
+## Next Steps
+
+This discovery provides the foundation for Phase 2 implementation:
+
+1. **Sandbox Server**: Use the JSON-RPC pattern in `packages/sandbox/server.py`
+2. **WebSocket Bridge**: Convert JSON-RPC messages to WebSocket format
+3. **Session Management**: Implement session lifecycle handling
+4. **Streaming**: Forward `session/update` notifications to frontend
+
+The proven communication pattern can be directly applied to build the FastAPI WebSocket server specified in the requirements.
+>>>>>>> main
