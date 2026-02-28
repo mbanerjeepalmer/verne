@@ -9,14 +9,22 @@
     "lint": "bun run --bun eslint"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.37.0",
+    "@elevenlabs/react": "^0.14.1",
+    "@mistralai/mistralai": "^1.14.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.34.3",
+    "install": "^0.13.0",
     "lucide-react": "^0.575.0",
+    "motion": "^12.34.3",
     "next": "16.1.6",
+    "npm": "^11.11.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "yargs": "yargs/yargs"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
