@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import Bun from "bun";
 import type { IPodcast } from "./types";
 import { sendQuery } from "./sandbox";
+import { handleTranscriptionWebSocket } from "./transcription";
 
 type Env = {
   Bindings: {
@@ -12,6 +13,8 @@ type Env = {
 
 const app = new Hono<Env>();
 const clients = new Set<any>();
+const transcriptionClients = new Map<any, (message: string | Buffer) => Promise<void>>();
+let submissionCount = 0;
 
 // Enable CORS for all routes
 app.use("*", cors());
@@ -106,7 +109,7 @@ Bun.serve({
   },
 
   websocket: {
-    open(ws) {
+    async open(ws) {
       console.log("WebSocket connection opened");
       clients.add(ws);
       console.log(`Client connected. Total clients: ${clients.size}`);
@@ -115,11 +118,49 @@ Bun.serve({
     close(ws) {
       console.log("WebSocket connection closed");
       clients.delete(ws);
+      transcriptionClients.delete(ws);
       console.log(`Client disconnected. Total clients: ${clients.size}`);
     },
 
-    message(_, message) {
-      console.log("WebSocket message received:", message);
+    async message(ws, message) {
+      // Check if this is a transcription-related message
+      if (typeof message === "string") {
+        try {
+          const data = JSON.parse(message);
+
+          // Handle transcription start
+          if (data.type === "transcription.start") {
+            console.log("[Transcription] Starting transcription for client");
+            const handler = await handleTranscriptionWebSocket(ws);
+            transcriptionClients.set(ws, handler);
+            // Send start signal to handler
+            await handler(message);
+            return;
+          }
+
+          // Handle transcription stop or other transcription messages
+          if (data.type === "transcription.stop" || transcriptionClients.has(ws)) {
+            const handler = transcriptionClients.get(ws);
+            if (handler) {
+              await handler(message);
+            }
+            return;
+          }
+
+          // Regular message handling
+          console.log("WebSocket message received:", message);
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      } else {
+        // Binary message - check if this client has a transcription handler
+        const handler = transcriptionClients.get(ws);
+        if (handler) {
+          await handler(message);
+        } else {
+          console.log("Binary message received without transcription handler");
+        }
+      }
     },
   },
 });

@@ -1,28 +1,44 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { SpeechInput } from "../speech-input/speech-input";
-import { Button } from "../ui/button";
 import { ArrowUpRight } from "lucide-react";
 import Spacer from "../spacer/spacer";
 
 interface QueryBlockProps {
   onSubmit?: (text: string) => void;
-  apiEndpoint?: string;
 }
 
 const QueryBlock = ({
   onSubmit,
-  apiEndpoint = "/api/audio",
 }: QueryBlockProps) => {
   const [text, setText] = useState("");
+  const partialTextRef = useRef("");
+  const baseTextRef = useRef("");
 
-  const handleTranscriptionSuccess = useCallback((response: unknown) => {
-    const result = response as { transcription?: string };
-    if (result.transcription) {
-      setText((prev) =>
-        prev ? `${prev} ${result.transcription}` : (result.transcription ?? ""),
-      );
+  // Handle real-time transcription (text deltas and final)
+  const handleTranscript = useCallback((transcriptText: string, isFinal: boolean) => {
+    if (isFinal) {
+      // Final transcription - replace partial with final text
+      const base = baseTextRef.current;
+      const finalText = base ? `${base} ${transcriptText}` : transcriptText;
+      partialTextRef.current = "";
+      baseTextRef.current = "";
+      setText(finalText);
+    } else {
+      // On first delta, capture the current text as the base
+      if (!partialTextRef.current) {
+        setText((currentText) => {
+          baseTextRef.current = currentText;
+          partialTextRef.current = transcriptText;
+          return currentText ? `${currentText} ${transcriptText}` : transcriptText;
+        });
+      } else {
+        // Subsequent deltas: rebuild as base + accumulated partial
+        partialTextRef.current += transcriptText;
+        const base = baseTextRef.current;
+        setText(base ? `${base} ${partialTextRef.current}` : partialTextRef.current);
+      }
     }
   }, []);
 
@@ -62,6 +78,20 @@ const QueryBlock = ({
 
   return (
     <div className="w-full flex flex-col rounded-lg border border-border p-3">
+      <div className="flex justify-between items-center">
+        <SpeechInput
+          onTranscript={handleTranscript}
+        />
+        <button
+          className="flex items-center gap-1 border px-2 p-1 rounded-md bg-black text-white cursor-pointer hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleSubmit}
+          disabled={!text.trim()}
+        >
+          <p className="text-sm">Submit</p>
+          <ArrowUpRight className="size-4" />
+        </button>
+      </div>
+      <Spacer size="small" />
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -70,23 +100,6 @@ const QueryBlock = ({
         className="w-full min-h-20 resize-none bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
         rows={3}
       />
-      <Spacer size="small" />
-      <div className="flex justify-between items-center">
-        <SpeechInput
-          apiEndpoint={apiEndpoint}
-          onSuccess={handleTranscriptionSuccess}
-        />
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleSubmit}
-          disabled={!text.trim()}
-          className="gap-1"
-        >
-          <span>Submit</span>
-          <ArrowUpRight className="size-4" />
-        </Button>
-      </div>
     </div>
   );
 };
