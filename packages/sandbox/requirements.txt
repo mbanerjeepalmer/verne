@@ -1,3 +1,0 @@
-mistral-vibe
-fastapi
-uvicorn
