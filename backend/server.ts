@@ -1,21 +1,20 @@
 import { Hono } from "hono";
 import Bun from "bun";
+import type { IPodcast } from "./types";
 
 type Env = {
   Bindings: {
-    server: Bun.Server;
+    server: Bun.Server<undefined>;
   };
 };
 
 const app = new Hono<Env>();
 const clients = new Set<any>();
 
-// Healthcheck
 app.get("/", (c) => {
   return c.text("Server running");
 });
 
-// WebSocket upgrade route
 app.get("/ws", (c) => {
   if (c.req.header("upgrade") !== "websocket") {
     return c.text("Expected websocket", 400);
@@ -30,13 +29,14 @@ app.get("/ws", (c) => {
   return new Response(null);
 });
 
-// Broadcast endpoint
 app.post("/broadcast", async (c) => {
-  const body = await c.req.json<{ event_type: string; message: string }>();
+  const body = await c.req.json<{ event_type: string; podcast: IPodcast }>();
 
   const broadcast = {
     event_type: body.event_type,
-    message: body.message,
+    payload: {
+      podcast: body.podcast,
+    },
   };
 
   clients.forEach((ws) => {
@@ -46,7 +46,6 @@ app.post("/broadcast", async (c) => {
   return c.json({ message: broadcast });
 });
 
-// Start Bun server
 Bun.serve({
   port: 3001,
 
