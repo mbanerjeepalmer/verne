@@ -7,7 +7,9 @@
   },
   "dependencies": {
     "@daytonaio/sdk": "^0.148.0",
-    "dotenv": "^17.3.1"
+    "@e2b/code-interpreter": "^2.3.3",
+    "dotenv": "^17.3.1",
+    "e2b": "^2.13.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.2",
