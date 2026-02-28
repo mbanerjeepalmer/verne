@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: resolve(__dirname, "../.env") });
 
 const CLI_PATH = resolve(__dirname, "../listennotes-cli/podcast_search.py");
+const API_MODULE_PATH = resolve(__dirname, "../listennotes-cli/listennotes_api.py");
 
 const SERVER_PORT = 8000;
 
@@ -45,6 +46,9 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   const cliSource = readFileSync(CLI_PATH, "utf-8");
   await sandbox.files.write("/usr/local/bin/podcast-search", cliSource);
   await sandbox.commands.run("chmod +x /usr/local/bin/podcast-search");
+
+  const apiModuleSource = readFileSync(API_MODULE_PATH, "utf-8");
+  await sandbox.files.write("/usr/local/bin/listennotes_api.py", apiModuleSource);
 
   const systemPrompt = readFileSync(
     resolve(__dirname, "../packages/sandbox/prompts/podcast-agent.md"),
