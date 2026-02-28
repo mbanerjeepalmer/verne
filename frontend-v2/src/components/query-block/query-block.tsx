@@ -26,9 +26,33 @@ const QueryBlock = ({
     }
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (text.trim()) {
+      // Call the onSubmit callback if provided
       onSubmit?.(text.trim());
+
+      // Submit to backend
+      try {
+        const response = await fetch("/api/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query: text.trim() }),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to submit query");
+        }
+
+        const data = await response.json();
+        console.log("Query submitted successfully:", data);
+
+        // Clear the text after successful submission
+        setText("");
+      } catch (error) {
+        console.error("Error submitting query:", error);
+      }
     }
   }, [text, onSubmit]);
 
@@ -47,9 +71,9 @@ const QueryBlock = ({
           onSuccess={handleTranscriptionSuccess}
         />
         <button
-          className="flex items-center gap-1 border px-2 p-1 rounded-md bg-black text-white cursor-pointer hover:opacity-80"
+          className="flex items-center gap-1 border px-2 p-1 rounded-md bg-black text-white cursor-pointer hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleSubmit}
-          disabled={true}
+          disabled={!text.trim()}
         >
           <p className="text-sm">Submit</p>
           <ArrowUpRight className="size-4" />

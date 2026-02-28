@@ -14,7 +14,11 @@ const fadeUp = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+    transition: {
+      delay: i * 0.1,
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
   }),
 };
 
@@ -64,10 +68,16 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <VerneLogo className="size-5" />
-            <span className="text-[15px] font-semibold tracking-tight">Verne</span>
+            <span className="text-[15px] font-semibold tracking-tight">
+              Verne
+            </span>
           </div>
           <button
-            onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() =>
+              document
+                .getElementById("features")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
             className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
           >
             Learn more
@@ -124,7 +134,11 @@ export default function LandingPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const }}
+          transition={{
+            delay: 0.4,
+            duration: 0.5,
+            ease: [0.25, 0.46, 0.45, 0.94] as const,
+          }}
           className="max-w-2xl mx-auto"
         >
           <QueryBlock />
