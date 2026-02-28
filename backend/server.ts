@@ -1,21 +1,25 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import Bun from "bun";
+import type { IPodcast } from "./types";
 
 type Env = {
   Bindings: {
-    server: Bun.Server;
+    server: Bun.Server<undefined>;
   };
 };
 
 const app = new Hono<Env>();
 const clients = new Set<any>();
+let submissionCount = 0;
 
-// Healthcheck
+// Enable CORS for all routes
+app.use("*", cors());
+
 app.get("/", (c) => {
   return c.text("Server running");
 });
 
-// WebSocket upgrade route
 app.get("/ws", (c) => {
   if (c.req.header("upgrade") !== "websocket") {
     return c.text("Expected websocket", 400);
@@ -30,13 +34,14 @@ app.get("/ws", (c) => {
   return new Response(null);
 });
 
-// Broadcast endpoint
 app.post("/broadcast", async (c) => {
-  const body = await c.req.json<{ event_type: string; message: string }>();
+  const body = await c.req.json<{ event_type: string; podcast: IPodcast }>();
 
   const broadcast = {
     event_type: body.event_type,
-    message: body.message,
+    payload: {
+      podcast: body.podcast,
+    },
   };
 
   clients.forEach((ws) => {
@@ -46,7 +51,72 @@ app.post("/broadcast", async (c) => {
   return c.json({ message: broadcast });
 });
 
-// Start Bun server
+app.post("/query", async (c) => {
+  const body = await c.req.json<{ query: string }>();
+  submissionCount++;
+
+  console.log(`Received query (submission ${submissionCount}):`, body.query);
+
+  if (submissionCount === 1) {
+    // First submission: ask for clarification
+    const broadcast = {
+      event_type: "clarification",
+      payload: {
+        message: "Could you please provide more details about what kind of podcast content you're looking for?",
+      },
+    };
+
+    clients.forEach((ws) => {
+      ws.send(JSON.stringify(broadcast));
+    });
+
+    return c.json({ success: true, response: broadcast });
+  } else {
+    // Second submission: return message and three podcast episodes
+    const broadcast = {
+      event_type: "results",
+      payload: {
+        message: "Here are three podcast episodes based on your query:",
+        podcasts: [
+          {
+            name: "Software Engineering Daily",
+            src: "https://example.com/audio1.mp3",
+            duration: 3300,
+            cover_image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=128&h=128&fit=crop&q=80",
+            start_time: 322,
+            end_time: 752,
+          },
+          {
+            name: "Data Engineering Podcast",
+            src: "https://example.com/audio2.mp3",
+            duration: 2700,
+            cover_image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=128&h=128&fit=crop&q=80",
+            start_time: 848,
+            end_time: 1238,
+          },
+          {
+            name: "The Distributed Systems Pod",
+            src: "https://example.com/audio3.mp3",
+            duration: 3600,
+            cover_image: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=128&h=128&fit=crop&q=80",
+            start_time: 525,
+            end_time: 1020,
+          },
+        ],
+      },
+    };
+
+    clients.forEach((ws) => {
+      ws.send(JSON.stringify(broadcast));
+    });
+
+    // Reset counter for next cycle
+    submissionCount = 0;
+
+    return c.json({ success: true, response: broadcast });
+  }
+});
+
 Bun.serve({
   port: 3001,
 
