@@ -1,18 +1,19 @@
 """FastAPI server wrapping Mistral Vibe's AgentLoop.
 
-Runs inside a Daytona sandbox. Exposes POST /message to drive the agent
+Runs inside a sandbox (E2B / local). Exposes POST /message to drive the agent
 and GET /health for liveness checks.
 """
 
 import os
 import uuid
-
 from pathlib import Path
+
 from dotenv import load_dotenv
 
-# Find .env from project root (two levels up from this file)
-_project_root = Path(__file__).resolve().parent.parent.parent
-load_dotenv(_project_root / ".env")
+# Load .env if running locally (in sandbox, env vars are injected directly)
+_env_file = Path(__file__).resolve().parent.parent.parent / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file)
 
 import logging
 import traceback
