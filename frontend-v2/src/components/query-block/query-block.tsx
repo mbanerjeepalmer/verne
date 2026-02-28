@@ -26,33 +26,9 @@ const QueryBlock = ({
     }
   }, []);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(() => {
     if (text.trim()) {
-      // Call the onSubmit callback if provided
       onSubmit?.(text.trim());
-
-      // Submit to backend
-      try {
-        const response = await fetch("/api/query", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ query: text.trim() }),
-        });
-
-        if (!response.ok) {
-          console.error("Failed to submit query");
-        }
-
-        const data = await response.json();
-        console.log("Query submitted successfully:", data);
-
-        // Clear the text after successful submission
-        setText("");
-      } catch (error) {
-        console.error("Error submitting query:", error);
-      }
     }
   }, [text, onSubmit]);
 
@@ -64,30 +40,32 @@ const QueryBlock = ({
   };
 
   return (
-    <div className="w-full flex flex-col rounded-lg">
-      <div className="flex justify-between items-center">
-        <SpeechInput
-          apiEndpoint={apiEndpoint}
-          onSuccess={handleTranscriptionSuccess}
-        />
-        <button
-          className="flex items-center gap-1 border px-2 p-1 rounded-md bg-black text-white cursor-pointer hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleSubmit}
-          disabled={!text.trim()}
-        >
-          <p className="text-sm">Submit</p>
-          <ArrowUpRight className="size-4" />
-        </button>
-      </div>
-      <Spacer size="small" />
+    <div className="w-full flex flex-col rounded-lg border border-border p-3">
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Enter your query or use voice input..."
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        rows={4}
+        className="w-full min-h-20 resize-none bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
+        rows={3}
       />
+      <Spacer size="small" />
+      <div className="flex justify-between items-center">
+        <SpeechInput
+          apiEndpoint={apiEndpoint}
+          onSuccess={handleTranscriptionSuccess}
+        />
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!text.trim()}
+          className="gap-1"
+        >
+          <span>Submit</span>
+          <ArrowUpRight className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 };
