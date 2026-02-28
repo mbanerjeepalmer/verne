@@ -1,36 +1,6 @@
 .vscode
-.obsidian/
->>>>>>> 24c6878 (Add .obsidian to gitignore and remove tracked workspace.json)
-=======
 .env
-.vscode
-node_modules/
-dist/
-.claude/
-=======
-node_modules/
-dist/
-.claude/
->>>>>>> 43dd891 (Stage all changes for vibe-acp branch)
-=======
-.env
-.vscode
-node_modules/
-dist/
-.claude/
 .obsidian/
-=======
-.vscode
-.obsidian/
->>>>>>> 24c6878 (Add .obsidian to gitignore and remove tracked workspace.json)
-=======
-.env
-.vscode
 node_modules/
 dist/
 .claude/
-=======
-node_modules/
-dist/
-.claude/
->>>>>>> 43dd891 (Stage all changes for vibe-acp branch)
