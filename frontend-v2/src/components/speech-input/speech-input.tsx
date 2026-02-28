@@ -12,24 +12,34 @@ type AudioRecorderStatus =
   | "success";
 
 interface AudioRecorderProps {
-  apiEndpoint?: string;
-  onSuccess?: (response: unknown) => void;
+  onTranscript?: (text: string, isFinal: boolean) => void;
   onError?: (error: Error) => void;
 }
 
+/**
+ * Convert Float32 audio samples to Int16 PCM
+ */
+function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
+  const int16Array = new Int16Array(float32Array.length);
+  for (let i = 0; i < float32Array.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32Array[i]));
+    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return int16Array;
+}
+
 export function SpeechInput({
-  apiEndpoint = "/api/audio",
-  onSuccess,
+  onTranscript,
   onError,
 }: AudioRecorderProps) {
   const [status, setStatus] = useState<AudioRecorderStatus>("idle");
   const [recordingTime, setRecordingTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
 
-  // startTimer - starts the recording timer
   const startTimer = useCallback(() => {
     setRecordingTime(0);
     timerRef.current = setInterval(() => {
@@ -37,7 +47,6 @@ export function SpeechInput({
     }, 1000);
   }, []);
 
-  // stopTimer - stops the recording timer
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -45,48 +54,86 @@ export function SpeechInput({
     }
   }, []);
 
-  // formatTime - formats the recording time in the format "mm:ss"
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // startRecording - starts the recording process
+  // startRecording - captures PCM audio via Web Audio API and streams to backend
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Connect to backend WebSocket
+      const ws = new WebSocket("ws://localhost:3001/ws");
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("[SpeechInput] WebSocket connected");
+        ws.send(JSON.stringify({ type: "transcription.start" }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "transcription.delta") {
+            onTranscript?.(data.text, false);
+          } else if (data.type === "transcription.done") {
+            onTranscript?.(data.text, true);
+            setStatus("success");
+          } else if (data.type === "error") {
+            console.error("[SpeechInput] Error:", data.message);
+            setStatus("error");
+            onError?.(new Error(data.message));
+          } else if (data.type === "ready") {
+            console.log("[SpeechInput] Server ready");
+          }
+        } catch (error) {
+          console.error("[SpeechInput] Error parsing message:", error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("[SpeechInput] WebSocket error:", error);
+        setStatus("error");
+        onError?.(new Error("WebSocket connection error"));
+      };
+
+      ws.onclose = () => {
+        console.log("[SpeechInput] WebSocket closed");
+        setStatus("idle");
+      };
+
+      // Get microphone access with PCM-friendly settings
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
       streamRef.current = stream;
 
-      audioChunksRef.current = [];
+      // Use Web Audio API to capture PCM directly (no ffmpeg needed)
+      const audioContext = new AudioContext({ sampleRate: 16000 });
+      audioContextRef.current = audioContext;
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm;codecs=opus",
-      });
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          const inputData = e.inputBuffer.getChannelData(0);
+          const pcmData = floatTo16BitPCM(inputData);
+          ws.send(pcmData.buffer);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
-        }
+      source.connect(processor);
+      processor.connect(audioContext.destination);
 
-        // Create blob from recorded chunks
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
-
-        // Upload the blob
-        await uploadAudio(audioBlob);
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
       setStatus("recording");
       startTimer();
     } catch (error) {
@@ -96,48 +143,34 @@ export function SpeechInput({
         error instanceof Error ? error : new Error("Failed to start recording"),
       );
     }
-  }, [startTimer, onError]);
+  }, [startTimer, onError, onTranscript]);
 
-  // stopRecording - stops the recording process
+  // stopRecording - cleans up audio pipeline and sends stop signal
   const stopRecording = useCallback(() => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== "inactive"
-    ) {
-      mediaRecorderRef.current.stop();
-      stopTimer();
+    stopTimer();
+
+    // Disconnect audio processing
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    // Stop microphone
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    // Send stop signal to trigger transcription
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "transcription.stop" }));
+      setStatus("uploading");
     }
   }, [stopTimer]);
-
-  // uploadAudio - uploads the recorded audio to the server
-  const uploadAudio = async (blob: Blob) => {
-    setStatus("uploading");
-    try {
-      const formData = new FormData();
-      formData.append("audio", blob, "recording.webm");
-
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Upload failed: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      const data = await response.json();
-      setStatus("idle");
-      onSuccess?.(data);
-    } catch (error) {
-      console.error("Error uploading audio:", error);
-      setStatus("error");
-      onError?.(
-        error instanceof Error ? error : new Error("Failed to upload audio"),
-      );
-    }
-  };
 
   // handleClick - handles the click event for the microphone button
   const handleClick = () => {

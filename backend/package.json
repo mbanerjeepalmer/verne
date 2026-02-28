@@ -10,6 +10,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@mistralai/mistralai": "^1.14.1",
     "dotenv": "^16.4.7",
     "e2b": "^2.13.0",
     "hono": "^4.12.3"
