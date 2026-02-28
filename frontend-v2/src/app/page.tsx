@@ -9,7 +9,7 @@ import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
 import { Mic, Search, Headphones, Zap } from "lucide-react";
 import Spacer from "@/components/spacer/spacer";
-import ConversationSection from "@/components/sections/conversation-section";
+
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -56,7 +56,7 @@ const features = [
 ];
 
 export default function LandingPage() {
-  const { podcasts } = usePodcasts();
+  const { podcasts, message } = usePodcasts();
 
   return (
     <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white">
@@ -144,6 +144,11 @@ export default function LandingPage() {
           className="max-w-2xl mx-auto"
         >
           <QueryBlock />
+          {message && (
+            <div className="mt-6 p-4 rounded-lg border border-border bg-black/[0.02]">
+              <p className="text-[15px] leading-relaxed text-black/70">{message}</p>
+            </div>
+          )}
           {podcasts.length > 0 && (
             <div className="mt-6 flex flex-col gap-4">
               {podcasts.map((podcast, index) => (
