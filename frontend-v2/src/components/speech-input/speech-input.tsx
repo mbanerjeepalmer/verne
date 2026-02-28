@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Mic } from "lucide-react";
-import { BarVisualizer } from "../ui/bar-visualizer";
+import { LiveWaveform } from "@/components/ui/live-waveform";
 
 type AudioRecorderStatus =
   | "idle"
@@ -165,14 +165,15 @@ export function SpeechInput({
           className="flex items-center gap-3 border px-2 p-1 rounded-md hover:bg-muted cursor-pointer"
           onClick={handleClick}
         >
-          <BarVisualizer
-            state="speaking"
-            demo={true}
-            barCount={5}
-            minHeight={30}
-            maxHeight={80}
-            className="h-4 w-12 bg-transparent p-0 rounded-none gap-0.5"
-          />
+          <div className="w-12 h-4 shrink-0">
+            <LiveWaveform
+              active={true}
+              barWidth={2}
+              barGap={1.5}
+              height={16}
+              barColor="currentColor"
+            />
+          </div>
           <div className="flex items-center gap-1">
             <p className="text-sm">Recording {formatTime(recordingTime)}</p>
           </div>
