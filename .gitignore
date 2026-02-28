@@ -1,2 +1,15 @@
+node_modules/
+dist/
+.claude/
+>>>>>>> 43dd891 (Stage all changes for vibe-acp branch)
+=======
 .env
 .vscode
+node_modules/
+dist/
+.claude/
+=======
+node_modules/
+dist/
+.claude/
+>>>>>>> 43dd891 (Stage all changes for vibe-acp branch)
