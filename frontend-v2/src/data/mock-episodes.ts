@@ -14,6 +14,12 @@ export const MOCK_EPISODES: IPodcast[] = [
       "https://cdn-images-3.listennotes.com/podcasts/60-minutes-extra-minutes-60-minutes-australia-BN_SwqY6MFc-B3qiJeZaIXd.1400x1400.jpg",
     start_time: 0,
     end_time: 1207,
+    highlights: [
+      { timestamp: 45, text: "Background on the Oceangate Titan expedition" },
+      { timestamp: 312, text: "Engineering failures and warning signs" },
+      { timestamp: 580, text: "Human hubris in extreme exploration" },
+      { timestamp: 890, text: "Impact on deep sea research going forward" },
+    ],
   },
   {
     name: "Ocean Exploration Trust - Live Streamed Deep Sea Exploration with the EV Nautilus",
@@ -23,6 +29,12 @@ export const MOCK_EPISODES: IPodcast[] = [
       "https://cdn-images-3.listennotes.com/podcasts/ocean-science-radio-ocean-science-radio-pojL4mEaJKk-XpKOU61VIZc.1400x1400.jpg",
     start_time: 0,
     end_time: 1914,
+    highlights: [
+      { timestamp: 120, text: "What is the Ocean Exploration Trust?" },
+      { timestamp: 490 },
+      { timestamp: 830, text: "Live streaming from the deep ocean floor" },
+      { timestamp: 1400, text: "Species discovered on recent dives" },
+    ],
   },
   {
     name: "Into the Unknown: Dangers of Deep Sea Exploration",
@@ -32,6 +44,11 @@ export const MOCK_EPISODES: IPodcast[] = [
       "https://cdn-images-3.listennotes.com/podcasts/off-the-radar-the-national-weather-desk-2oKg9kmYJ8e-idOqa6fPsz5.1400x1400.jpg",
     start_time: 0,
     end_time: 1065,
+    highlights: [
+      { timestamp: 60, text: "The physics of deep sea pressure" },
+      { timestamp: 350, text: "Submersible design and safety" },
+      { timestamp: 700, text: "What went wrong with the OceanGate Titan" },
+    ],
   },
   {
     name: "Deep sea exploration",
