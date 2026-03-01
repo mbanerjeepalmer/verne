@@ -19,10 +19,12 @@ const QueryBlock = ({
   const [text, setText] = useState("");
   const partialTextRef = useRef("");
   const baseTextRef = useRef("");
-  const { addMessage } = usePodcasts();
+  const { addMessage, setVoiceMode } = usePodcasts();
 
   // Handle real-time transcription (text deltas and final)
+  // Auto-enable voice mode when user starts speaking
   const handleTranscript = useCallback((transcriptText: string, isFinal: boolean) => {
+    setVoiceMode(true);
     if (isFinal) {
       // Final transcription - replace partial with final text
       const base = baseTextRef.current;
@@ -79,7 +81,7 @@ const QueryBlock = ({
         console.error("Error submitting query:", error);
       }
     }
-  }, [text, onSubmit, navigateOnly]);
+  }, [text, onSubmit, navigateOnly, addMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

@@ -2,16 +2,18 @@
 
 import VerneLogo from "@/components/icons/verne-logo";
 import { FullPodcastCard } from "@/components/full-podcast-card";
+import { MessageTTS } from "@/components/message-tts/message-tts";
 import QueryBlock from "@/components/query-block/query-block";
 import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MOCK_EPISODES } from "@/data/mock-episodes";
 import { StickyPlayer } from "@/components/sticky-player";
+import { Volume2, VolumeX } from "lucide-react";
 
 export default function ChatPage() {
-  const { messages, clearMessages, setMessage, addMessage } =
+  const { messages, clearMessages, setMessage, addMessage, isVoiceMode, setVoiceMode, isTTSPlaying } =
     usePodcasts();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -56,6 +58,17 @@ export default function ChatPage() {
     router.push("/");
   };
 
+  // Find the last assistant text message for voice-mode auto-play
+  const lastAssistantIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "assistant" && (!m.type || m.type === "assistant") && m.content.trim()) {
+        return i;
+      }
+    }
+    return -1;
+  }, [messages]);
+
   return (
     <div className="h-screen flex flex-col bg-white text-black selection:bg-black selection:text-white">
       <Websocket />
@@ -69,12 +82,28 @@ export default function ChatPage() {
               Verne
             </span>
           </div>
-          <button
-            onClick={handleNewConversation}
-            className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
-          >
-            New conversation
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setVoiceMode(!isVoiceMode)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
+                isVoiceMode
+                  ? isTTSPlaying
+                    ? "voice-glow-dark text-white"
+                    : "bg-black text-white"
+                  : "text-black/40 hover:text-black/60"
+              }`}
+              title={isVoiceMode ? "Voice mode on — click to mute" : "Voice mode off — click to read responses aloud"}
+            >
+              {isVoiceMode ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+              <span>Voice</span>
+            </button>
+            <button
+              onClick={handleNewConversation}
+              className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
+            >
+              New conversation
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -149,9 +178,15 @@ export default function ChatPage() {
             return (
               <div
                 key={i}
-                className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70 self-start max-w-[85%]"
+                className="self-start max-w-[85%]"
               >
-                {msg.content}
+                <div className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70">
+                  {msg.content}
+                </div>
+                <MessageTTS
+                  text={msg.content}
+                  autoPlay={isVoiceMode && i === lastAssistantIdx}
+                />
               </div>
             );
           })}
