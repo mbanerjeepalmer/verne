@@ -10,6 +10,7 @@ import {
   ScrubBarThumb,
 } from "@/components/ui/scrub-bar"
 import type { IPodcast } from "@/types/podcast"
+import { useAudioPlayer } from "@/stores/useAudioPlayer"
 
 function formatSecondsToTime(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -38,6 +39,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
   const [isMuted, setIsMuted] = React.useState(false)
   const [showVolume, setShowVolume] = React.useState(false)
   const isScrubbing = React.useRef(false)
+  const { play: globalPlay, pause: globalPause } = useAudioPlayer()
 
   // Create audio element once
   React.useEffect(() => {
@@ -59,6 +61,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
     const onEnded = () => {
       setIsPlaying(false)
       setCurrentTime(0)
+      globalPause(src)
     }
 
     audio.addEventListener("timeupdate", onTimeUpdate)
@@ -94,7 +97,9 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
 
     if (isPlaying) {
       audio.pause()
+      globalPause(src)
     } else {
+      globalPlay(src, audio)
       setIsLoading(true)
       try {
         await audio.play()
@@ -117,6 +122,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
     isScrubbing.current = false
     if (audioRef.current) {
       audioRef.current.currentTime = currentTime
+      globalPlay(src, audioRef.current)
       audioRef.current.play().catch(() => {})
     }
   }
