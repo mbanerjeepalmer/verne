@@ -25,7 +25,7 @@ class PostEpisodeArgs(BaseModel):
 
 
 class PostEpisodeResult(BaseModel):
-    success: bool
+    message: str
 
 
 class PostEpisodeConfig(BaseToolConfig):
@@ -43,4 +43,4 @@ class PostEpisode(
     async def run(
         self, args: PostEpisodeArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | PostEpisodeResult, None]:
-        yield PostEpisodeResult(success=True)
+        yield PostEpisodeResult(message=f"Posted '{args.name[:20]}…' to user")
