@@ -28,7 +28,7 @@ podcast-best --genre-id 67 --limit 3
 
 ### Clarification questions
 
-Instead of immediately using the CLI tool, you can send the user a message with a clarifying question/s. 
+Instead of immediately using the CLI tool, you can send the user a message with a clarifying question. Any clarification must be one short sentence at most.
 
 ### Search workflow
 
