@@ -1,11 +1,10 @@
 "use client";
 
 import { usePodcasts } from "@/stores/usePodcasts";
-import { IPodcast } from "@/types/podcast";
 import { useEffect, useRef } from "react";
 
 const Websocket = () => {
-  const { addPodcast, setPodcasts, setMessage, addMessage } = usePodcasts();
+  const { setMessage, addMessage } = usePodcasts();
 
   const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
   if (!wsUrl) {
@@ -45,10 +44,8 @@ const Websocket = () => {
         setMessage(payload.content);
         addMessage({ role: "assistant", content: payload.content });
       } else if (eventType === "episodes") {
-        // Don't addMessage here — the assistant message was already added
-        // by the preceding "assistant" event. Just update podcasts.
         if (payload.podcasts && Array.isArray(payload.podcasts)) {
-          setPodcasts(payload.podcasts);
+          addMessage({ role: "assistant", content: "", type: "episodes", podcasts: payload.podcasts });
         }
       } else if (eventType === "error") {
         addMessage({ role: "assistant", content: payload.content ?? "Something went wrong.", type: "error" });
@@ -64,7 +61,7 @@ const Websocket = () => {
       if (!socket.current) return;
       socket.current.close();
     };
-  }, [addPodcast, setPodcasts, setMessage, addMessage]);
+  }, [setMessage, addMessage]);
 
   return <></>;
 };
