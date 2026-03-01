@@ -69,6 +69,7 @@ export const FullPodcastCard = React.forwardRef<FullPodcastCardHandle, FullPodca
       try {
         await audio.play()
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return
         console.error("Playback failed:", err)
       }
       setIsLoading(false)

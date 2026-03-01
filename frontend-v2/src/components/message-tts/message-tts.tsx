@@ -109,6 +109,7 @@ export function MessageTTS({ text, autoPlay, voiceId, messageIndex, onEnded }: M
       setIsGlowing(true);
       await audio.play();
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setError(e instanceof Error ? e.message : "TTS failed");
       cleanup();
     } finally {
