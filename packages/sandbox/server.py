@@ -66,8 +66,11 @@ def _init_otel():
     logging.info(f"OTEL endpoint: {endpoint}")
     logging.info(f"OTEL headers configured: {list(headers.keys())}")
 
+    from opentelemetry.processor.baggage import BaggageSpanProcessor, ALLOW_ALL_BAGGAGE_KEYS
+
     exporter = OTLPSpanExporter(endpoint=endpoint, headers=headers)
     provider = TracerProvider()
+    provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
     MistralAiInstrumentor().instrument()
@@ -126,6 +129,10 @@ async def message(req: MessageRequest):
     try:
         sid, agent = _get_or_create_session(req.session_id)
 
+        from opentelemetry import baggage, context
+        ctx = baggage.set_baggage("session.id", sid)
+        token = context.attach(ctx)
+
         events: list[EventOut] = []
         async for event in agent.act(req.message):
             etype = type(event).__name__
@@ -150,6 +157,7 @@ async def message(req: MessageRequest):
             elif etype == "ReasoningEvent":
                 events.append(EventOut(type="reasoning", content=event.content))
 
+        context.detach(token)
         return MessageResponse(session_id=sid, events=events)
     except Exception:
         logging.exception("Error in /message")
@@ -169,6 +177,10 @@ async def message_stream(req: MessageRequest):
         return JSONResponse(status_code=500, content={"error": traceback.format_exc()})
 
     async def generate():
+        from opentelemetry import baggage, context
+        ctx = baggage.set_baggage("session.id", sid)
+        token = context.attach(ctx)
+
         yield _json.dumps({"type": "session", "session_id": sid}) + "\n"
         try:
             async for event in agent.act(req.message):
@@ -187,6 +199,8 @@ async def message_stream(req: MessageRequest):
         except Exception:
             logging.exception("Error streaming agent events")
             yield _json.dumps({"type": "error", "content": traceback.format_exc()}) + "\n"
+        finally:
+            context.detach(token)
         yield _json.dumps({"type": "done"}) + "\n"
 
     return StreamingResponse(generate(), media_type="application/x-ndjson")
