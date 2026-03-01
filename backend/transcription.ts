@@ -150,6 +150,13 @@ export async function handleTranscriptionWebSocket(ws: TranscriptionWebSocket) {
                 type: "error",
                 message: error instanceof Error ? error.message : "Transcription stream error"
               }));
+            } finally {
+              // Clean up Mistral client to free the connection
+              try {
+                client.close?.();
+              } catch {
+                // ignore cleanup errors
+              }
             }
           })();
           return;

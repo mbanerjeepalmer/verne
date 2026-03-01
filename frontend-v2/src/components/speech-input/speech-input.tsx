@@ -82,6 +82,15 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
   // startRecording - captures PCM audio via Web Audio API and streams to backend
   const startRecording = useCallback(async () => {
     try {
+      // Close any leftover WebSocket from a previous attempt
+      if (wsRef.current) {
+        wsRef.current.onclose = null; // prevent stale onclose from clobbering state
+        if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+          wsRef.current.close();
+        }
+        wsRef.current = null;
+      }
+
       // Connect to backend WebSocket
       const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:3001";
       const ws = new WebSocket(`${wsUrl}/ws`);
@@ -101,10 +110,12 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
           } else if (data.type === "transcription.done") {
             onTranscript?.(data.text, true);
             setStatus("idle");
+            ws.close();
           } else if (data.type === "error") {
             console.error("[SpeechInput] Error:", data.message);
             setStatus("error");
             onError?.(new Error(data.message));
+            ws.close();
           } else if (data.type === "ready") {
             console.log("[SpeechInput] Server ready");
           }
@@ -189,6 +200,22 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "transcription.stop" }));
       setStatus("uploading");
+
+      // Timeout fallback: if backend never responds, reset to idle
+      const ws = wsRef.current;
+      const timeout = setTimeout(() => {
+        console.warn("[SpeechInput] Transcription timed out after 15s");
+        ws.onclose = null;
+        ws.close();
+        setStatus("idle");
+      }, 15000);
+
+      // Clear timeout once a response arrives (done or error)
+      const origOnMessage = ws.onmessage;
+      ws.onmessage = (event) => {
+        clearTimeout(timeout);
+        origOnMessage?.call(ws, event);
+      };
     }
   }, [stopTimer]);
 
