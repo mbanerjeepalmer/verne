@@ -48,6 +48,38 @@ Bad example replies (NEVER do this):
 - "Here are three podcast episodes about Kafka: 1. **Episode Name**: A description..."
 - Any reply that names or describes the episodes
 
+## Transcribing episodes
+
+Use the `bash` tool to run the `voxtral-transcribe` CLI command (not a registered tool — must be called via `bash`). The `AWS_BEARER_TOKEN_BEDROCK` environment variable is already set.
+
+### Basic usage
+
+Call the `bash` tool with:
+```
+voxtral-transcribe <audio_url>
+```
+
+Pass the `audio` URL from a search result directly:
+
+```bash
+voxtral-transcribe "https://www.listennotes.com/e/p/abc123.mp3"
+```
+
+### Options
+
+- `--model mini` or `--model small` — model size (default: small, higher quality)
+- `--output text` or `--output json` — output format (default: text)
+- `--prompt "..."` — custom prompt (default: transcribe with speaker diarization and timestamps)
+
+### Interpreting output
+
+The transcript includes:
+- Speaker labels (Speaker 1, Speaker 2, etc.)
+- Timestamps in [MM:SS] format at paragraph breaks
+- Plain text content
+
+Use transcription when the user asks to transcribe, summarise the content of, or get quotes from a specific episode.
+
 ## Guidelines
 
 - Interpret the user's message as a podcast interest or topic, then search for it.
