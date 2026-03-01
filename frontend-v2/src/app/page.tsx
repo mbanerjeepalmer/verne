@@ -6,6 +6,14 @@ import { BarVisualizer } from "@/components/ui/bar-visualizer";
 import QueryBlock from "@/components/query-block/query-block";
 import { Mic, Search, Headphones, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+
+const poweredBy = [
+  { name: "AWS Bedrock", logo: "/logos/bedrock.svg" },
+  { name: "Mistral Voxtral", logo: "/logos/voxtral.png" },
+  { name: "Mistral Vibe", logo: "/logos/vibe.png" },
+  { name: "ListenNotes", logo: "/logos/listennotes.png" },
+];
 
 
 const fadeUp = {
@@ -145,6 +153,34 @@ export default function LandingPage() {
             navigateOnly
             onSubmit={(query) => router.push(`/app?q=${encodeURIComponent(query)}`)}
           />
+
+          {/* Powered-by logos */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.6 }}
+            className="flex flex-col items-center gap-5 mt-10"
+          >
+            <span className="text-[11px] text-black/25 uppercase tracking-widest font-medium">
+              Powered by
+            </span>
+            <div className="flex items-center gap-10">
+            {poweredBy.map((item) => (
+              <div key={item.name} className="group flex items-center gap-2 cursor-default">
+                <Image
+                  src={item.logo}
+                  alt={item.name}
+                  width={24}
+                  height={24}
+                  className="opacity-40 transition-opacity duration-200 group-hover:opacity-100"
+                />
+                <span className="text-[13px] text-black/30 font-medium transition-colors duration-200 group-hover:text-black/70">
+                  {item.name}
+                </span>
+              </div>
+            ))}
+            </div>
+          </motion.div>
         </motion.div>
       </section>
 
