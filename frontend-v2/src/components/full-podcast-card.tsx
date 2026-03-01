@@ -40,7 +40,9 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
   const [showVolume, setShowVolume] = React.useState(false)
   const isScrubbing = React.useRef(false)
   const scrubTarget = React.useRef(start_time || 0)
-  const { play: globalPlay, pause: globalPause } = useAudioPlayer()
+  const playerRef = React.useRef<HTMLDivElement | null>(null)
+  const { play: globalPlay, pause: globalPause, setCardVisible } = useAudioPlayer()
+  const meta = React.useMemo(() => ({ name, coverImage: cover_image, duration: totalSeconds }), [name, cover_image, totalSeconds])
 
   // Create audio element once
   React.useEffect(() => {
@@ -91,6 +93,19 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
     }
   }, [volume, isMuted])
 
+  // Track card visibility when this episode is playing
+  React.useEffect(() => {
+    const player = playerRef.current
+    if (!player || !isPlaying) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setCardVisible(src, entry.isIntersecting),
+      { threshold: 0.1 }
+    )
+    observer.observe(player)
+    return () => observer.disconnect()
+  }, [isPlaying, src, setCardVisible])
+
   const togglePlay = async (e: React.MouseEvent) => {
     e.stopPropagation()
     const audio = audioRef.current
@@ -100,7 +115,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
       audio.pause()
       globalPause(src)
     } else {
-      globalPlay(src, audio)
+      globalPlay(src, audio, meta)
       setIsLoading(true)
       try {
         await audio.play()
@@ -124,7 +139,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
     isScrubbing.current = false
     if (audioRef.current) {
       audioRef.current.currentTime = scrubTarget.current
-      globalPlay(src, audioRef.current)
+      globalPlay(src, audioRef.current, meta)
       audioRef.current.play().catch(() => {})
     }
   }
@@ -133,7 +148,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
     if (audioRef.current) {
       audioRef.current.currentTime = time
       setCurrentTime(time)
-      globalPlay(src, audioRef.current)
+      globalPlay(src, audioRef.current, meta)
       audioRef.current.play().catch(() => {})
     }
   }
@@ -148,7 +163,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
   return (
     <Card className="group relative overflow-hidden w-full max-w-2xl rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 py-3.5 hover:shadow-md hover:border-slate-400 dark:hover:border-slate-600 transition-all cursor-pointer duration-200 ease-in-out">
       {/* Main Content: Thumbnail and Title */}
-      <div className="flex items-start gap-4">
+      <div ref={playerRef} className="flex items-start gap-4">
         <button
           className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/10 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
           onClick={togglePlay}
