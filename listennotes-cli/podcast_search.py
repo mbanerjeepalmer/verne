@@ -262,15 +262,22 @@ Examples:
 
         elif args.output == "compact":
             # Minimal fields for post_episode tool
-            keep = ["title_original", "audio", "audio_length_sec", "image", "thumbnail"]
+            keep = ["title_original", "audio", "audio_length_sec", "image", "thumbnail",
+                    "description_original", "pub_date_ms", "link"]
             compact = {
                 "count": results.get("count", 0),
                 "total": results.get("total", 0),
-                "results": [
-                    {k: item.get(k) for k in keep if item.get(k) is not None}
-                    for item in results.get("results", [])
-                ],
+                "results": [],
             }
+            for item in results.get("results", []):
+                entry = {k: item.get(k) for k in keep if item.get(k) is not None}
+                # Flatten podcast metadata
+                podcast = item.get("podcast", {})
+                if podcast.get("title_original"):
+                    entry["podcast_title"] = podcast["title_original"]
+                if podcast.get("publisher_original"):
+                    entry["publisher"] = podcast["publisher_original"]
+                compact["results"].append(entry)
             print(json.dumps(compact, indent=2))
 
         elif args.output == "summary":

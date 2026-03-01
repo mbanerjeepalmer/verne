@@ -11,4 +11,9 @@ export interface IPodcast {
   start_time: number;
   end_time: number;
   highlights?: IHighlight[];
+  description?: string;
+  pub_date_ms?: number;
+  podcast_title?: string;
+  publisher?: string;
+  link?: string;
 }

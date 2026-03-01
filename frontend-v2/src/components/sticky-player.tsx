@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Play, Pause } from "lucide-react"
+import { Play, Pause, Volume2 } from "lucide-react"
 import { useAudioPlayer } from "@/stores/useAudioPlayer"
 
 function formatSecondsToTime(seconds: number) {
@@ -15,14 +15,15 @@ function formatSecondsToTime(seconds: number) {
 }
 
 export function StickyPlayer() {
-  const { activeAudio, activeMeta, activeEpisodeId, isCardVisible } = useAudioPlayer()
+  const activeItem = useAudioPlayer((s) => s.activeItem)
+  const isCardVisible = useAudioPlayer((s) => s.isCardVisible)
   const [currentTime, setCurrentTime] = React.useState(0)
   const [isPlaying, setIsPlaying] = React.useState(false)
 
-  const visible = !!(activeEpisodeId && activeMeta && activeAudio && !isCardVisible)
+  const visible = !!(activeItem && !isCardVisible)
 
   React.useEffect(() => {
-    const audio = activeAudio
+    const audio = activeItem?.audio
     if (!audio) return
 
     const onTimeUpdate = () => setCurrentTime(audio.currentTime)
@@ -41,17 +42,17 @@ export function StickyPlayer() {
       audio.removeEventListener("play", onPlay)
       audio.removeEventListener("pause", onPause)
     }
-  }, [activeAudio])
+  }, [activeItem])
 
-  const duration = activeMeta?.duration || 1
-  const progress = activeAudio ? (currentTime / duration) * 100 : 0
+  const duration = activeItem?.meta.duration || 1
+  const progress = activeItem?.audio ? (currentTime / duration) * 100 : 0
 
   const togglePlay = () => {
-    if (!activeAudio) return
+    if (!activeItem?.audio) return
     if (isPlaying) {
-      activeAudio.pause()
+      activeItem.audio.pause()
     } else {
-      activeAudio.play().catch(() => {})
+      activeItem.audio.play().catch(() => {})
     }
   }
 
@@ -71,12 +72,16 @@ export function StickyPlayer() {
           </div>
 
           <div className="max-w-2xl mx-auto flex items-center gap-3">
-            {activeMeta && (
+            {activeItem?.meta.coverImage ? (
               <img
-                src={activeMeta.coverImage}
-                alt={activeMeta.name}
+                src={activeItem.meta.coverImage}
+                alt={activeItem.meta.name}
                 className="w-10 h-10 rounded-lg object-cover shrink-0"
               />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <Volume2 className="w-4 h-4 text-slate-400" />
+              </div>
             )}
 
             <button
@@ -93,7 +98,7 @@ export function StickyPlayer() {
 
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-900 truncate">
-                {activeMeta?.name}
+                {activeItem?.meta.name}
               </p>
               <p className="text-xs font-mono text-slate-400 tabular-nums">
                 {formatSecondsToTime(currentTime)} / {formatSecondsToTime(duration)}

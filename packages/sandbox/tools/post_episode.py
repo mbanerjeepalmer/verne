@@ -22,6 +22,11 @@ class PostEpisodeArgs(BaseModel):
     cover_image: str = Field(description="Cover art URL")
     start_time: int = Field(default=0, description="Clip start in seconds")
     end_time: int = Field(description="Clip end in seconds")
+    description: str | None = Field(default=None, description="Episode description")
+    pub_date_ms: int | None = Field(default=None, description="Publish date as Unix timestamp in milliseconds")
+    podcast_title: str | None = Field(default=None, description="Name of the podcast show")
+    publisher: str | None = Field(default=None, description="Publisher name")
+    link: str | None = Field(default=None, description="Web link to the episode")
 
 
 class PostEpisodeResult(BaseModel):

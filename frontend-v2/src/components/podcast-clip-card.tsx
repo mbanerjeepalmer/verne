@@ -46,11 +46,19 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
   const [showVolume, setShowVolume] = React.useState(false)
   const isScrubbing = React.useRef(false)
   const scrubTarget = React.useRef(start_time)
-  const { play: globalPlay, pause: globalPause } = useAudioPlayer()
+  const globalPlay = useAudioPlayer((s) => s.play)
+  const globalPause = useAudioPlayer((s) => s.pause)
   const meta = React.useMemo(() => ({ name, coverImage: cover_image, duration: fullSec }), [name, cover_image, fullSec])
 
   // Unique ID for this clip (src + start/end to distinguish clips from same episode)
   const clipId = `${src}#${start_time}-${end_time}`
+
+  const playableItem = React.useCallback(() => ({
+    id: clipId,
+    type: "episode" as const,
+    audio: audioRef.current!,
+    meta,
+  }), [clipId, meta])
 
   // Create audio element once
   React.useEffect(() => {
@@ -68,7 +76,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
       if (audio.currentTime >= end_time) {
         audio.pause()
         setIsPlaying(false)
-        globalPause(clipId)
+        globalPause()
       }
     }
     const onPlay = () => setIsPlaying(true)
@@ -78,7 +86,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
     const onEnded = () => {
       setIsPlaying(false)
       setCurrentTime(start_time)
-      globalPause(clipId)
+      globalPause()
     }
 
     audio.addEventListener("timeupdate", onTimeUpdate)
@@ -114,9 +122,9 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
 
     if (isPlaying) {
       audio.pause()
-      globalPause(clipId)
+      globalPause()
     } else {
-      globalPlay(clipId, audio, meta)
+      globalPlay(playableItem())
       setIsLoading(true)
       try {
         await audio.play()
@@ -140,7 +148,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
     isScrubbing.current = false
     if (audioRef.current) {
       audioRef.current.currentTime = scrubTarget.current
-      globalPlay(clipId, audioRef.current, meta)
+      globalPlay(playableItem())
       audioRef.current.play().catch(() => {})
     }
   }
@@ -150,7 +158,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
     if (audioRef.current) {
       audioRef.current.currentTime = start_time
       setCurrentTime(start_time)
-      globalPlay(clipId, audioRef.current, meta)
+      globalPlay(playableItem())
       audioRef.current.play().catch(() => {})
     }
   }
