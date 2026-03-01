@@ -7,6 +7,7 @@ export const vibeTemplate = Template()
     "fastapi",
     "uvicorn",
     "requests",
+    "langfuse",
     "opentelemetry-instrumentation-mistralai",
     "opentelemetry-exporter-otlp-proto-http",
     "opentelemetry-processor-baggage",
