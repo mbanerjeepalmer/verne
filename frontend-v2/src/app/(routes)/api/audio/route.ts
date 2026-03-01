@@ -1,4 +1,4 @@
-import { xelevenlabs } from "@/services/services";
+import { getElevenLabs } from "@/services/services";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const transcription = await xelevenlabs.speechToText.convert({
+    const transcription = await getElevenLabs().speechToText.convert({
       file: audioBlob,
       modelId: "scribe_v2", // Model to use
       tagAudioEvents: true, // Tag audio events like laughter, applause, etc.
@@ -27,10 +27,8 @@ export async function POST(request: NextRequest) {
       transcription: transcription.text,
     });
   } catch (error) {
-    console.error("Error processing audio:", error);
-    return NextResponse.json(
-      { error: "Failed to process audio" },
-      { status: 500 },
-    );
+    const message = error instanceof Error ? error.message : "Failed to process audio";
+    console.error("Error processing audio:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
