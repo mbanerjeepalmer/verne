@@ -40,6 +40,7 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGlowing, setIsGlowing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const hasAutoPlayedRef = useRef(false);
@@ -63,6 +64,7 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
 
     setIsLoading(true);
     setIsGlowing(false);
+    setError(null);
     try {
       const response = await fetch("/api/tts", {
         method: "POST",
@@ -70,7 +72,10 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
         body: JSON.stringify({ text, voiceId }),
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || `TTS failed (${response.status})`);
+      }
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -85,7 +90,8 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
       setTTSPlaying(true);
       setIsGlowing(true);
       await audio.play();
-    } catch {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "TTS failed");
       cleanup();
     } finally {
       setIsLoading(false);
@@ -116,25 +122,30 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
   if (!text.trim()) return null;
 
   return (
-    <button
-      onClick={toggle}
-      disabled={isLoading}
-      className="flex items-center gap-1.5 mt-1 px-1.5 py-0.5 rounded hover:bg-black/[0.04] transition-colors cursor-pointer disabled:cursor-wait group"
-    >
-      {isLoading ? (
-        <Loader2 className="size-3 text-black/25 animate-spin" />
-      ) : isPlaying ? (
-        <VolumeX
-          className="size-3"
-          style={isGlowing ? {
-            color: "oklch(0.55 0.22 270)",
-            animation: "voice-bar-glow 1.2s ease-in-out forwards",
-          } : { color: "oklch(0 0 0 / 0.4)" }}
-        />
-      ) : (
-        <Volume2 className="size-3 text-black/20 group-hover:text-black/40 transition-colors" />
+    <div className="flex items-center gap-2 mt-1">
+      <button
+        onClick={toggle}
+        disabled={isLoading}
+        className="flex items-center gap-1.5 px-1.5 py-0.5 rounded hover:bg-black/[0.04] transition-colors cursor-pointer disabled:cursor-wait group"
+      >
+        {isLoading ? (
+          <Loader2 className="size-3 text-black/25 animate-spin" />
+        ) : isPlaying ? (
+          <VolumeX
+            className="size-3"
+            style={isGlowing ? {
+              color: "oklch(0.55 0.22 270)",
+              animation: "voice-bar-glow 1.2s ease-in-out forwards",
+            } : { color: "oklch(0 0 0 / 0.4)" }}
+          />
+        ) : (
+          <Volume2 className="size-3 text-black/20 group-hover:text-black/40 transition-colors" />
+        )}
+        <MockWaveform active={isPlaying} glowing={isGlowing} />
+      </button>
+      {error && (
+        <span className="text-[11px] text-red-500/70">{error}</span>
       )}
-      <MockWaveform active={isPlaying} glowing={isGlowing} />
-    </button>
+    </div>
   );
 }
