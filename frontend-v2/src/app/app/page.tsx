@@ -226,10 +226,20 @@ export default function ChatPage() {
 
             if (msg.type === "episodes" && msg.episodes) {
               const isLatest = i === latestEpisodesIdx;
+              // Check if previous message is an assistant TTS that will autoplay and chain to this
+              const prevMsg = i > 0 ? messages[i - 1] : null;
+              const hasPrecedingAutoplayTTS = prevMsg?.role === "assistant" &&
+                                              (!prevMsg.type || prevMsg.type === "assistant") &&
+                                              prevMsg.content.trim() &&
+                                              isVoiceMode &&
+                                              (i - 1) === lastAssistantIdx;
+
               return (
                 <div key={i} className="flex flex-col gap-4 w-full">
                   {msg.episodes.map((episode, j) => {
                     const key = episodeKey(i, j);
+                    // Don't autoplay first episode if TTS will chain to it
+                    const shouldAutoPlay = isLatest && j === 0 && !hasPrecedingAutoplayTTS;
                     return (
                       <FullPodcastCard
                         key={j}
@@ -238,7 +248,7 @@ export default function ChatPage() {
                           else episodeRefsMap.current.delete(key);
                         }}
                         podcast={episode}
-                        autoPlay={isLatest && j === 0}
+                        autoPlay={shouldAutoPlay}
                         onEnded={getEpisodeOnEnded(i, j)}
                       />
                     );
@@ -258,6 +268,10 @@ export default function ChatPage() {
               );
             }
 
+            // Check if this assistant message is followed by episodes
+            const nextMsg = messages[i + 1];
+            const hasFollowingEpisodes = nextMsg?.type === "episodes" && nextMsg.episodes?.length;
+
             return (
               <div
                 key={i}
@@ -270,6 +284,14 @@ export default function ChatPage() {
                   text={msg.content}
                   autoPlay={isVoiceMode && i === lastAssistantIdx}
                   messageIndex={i}
+                  onEnded={() => {
+                    // After TTS ends, play first episode if this message is followed by episodes
+                    if (hasFollowingEpisodes) {
+                      const episodesIdx = i + 1;
+                      const firstEpisodeKey = episodeKey(episodesIdx, 0);
+                      episodeRefsMap.current.get(firstEpisodeKey)?.play();
+                    }
+                  }}
                 />
               </div>
             );
