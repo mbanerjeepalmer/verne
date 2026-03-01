@@ -6,3 +6,4 @@ dist/
 .claude/
 .playwright-mcp/
 .DS_Store
+recordings/
