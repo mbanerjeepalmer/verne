@@ -11,16 +11,20 @@ export interface ChatMessage {
 interface PodcastsState {
   message: string | null;
   messages: ChatMessage[];
+  isVoiceMode: boolean;
   setMessage: (message: string | null) => void;
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
+  setVoiceMode: (isVoice: boolean) => void;
 }
 
 export const usePodcasts = create<PodcastsState>((set) => ({
   message: null,
   messages: [],
+  isVoiceMode: false,
   setMessage: (message) => set({ message }),
   addMessage: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
   clearMessages: () => set({ messages: [] }),
+  setVoiceMode: (isVoice) => set({ isVoiceMode: isVoice }),
 }));
