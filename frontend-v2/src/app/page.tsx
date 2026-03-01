@@ -56,7 +56,18 @@ const features = [
 ];
 
 export default function LandingPage() {
-  const { podcasts, message } = usePodcasts();
+  const { podcasts, message, messages, clearMessages, clearPodcasts, setMessage } = usePodcasts();
+
+  const handleNewConversation = async () => {
+    try {
+      await fetch("/api/sandbox/restart", { method: "POST" });
+    } catch (err) {
+      console.error("Failed to restart sandbox:", err);
+    }
+    clearMessages();
+    clearPodcasts();
+    setMessage(null);
+  };
 
   return (
     <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white">
@@ -74,16 +85,26 @@ export default function LandingPage() {
               Verne
             </span>
           </div>
-          <button
-            onClick={() =>
-              document
-                .getElementById("features")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
-          >
-            Learn more
-          </button>
+          <div className="flex items-center gap-4">
+            {messages.length > 0 && (
+              <button
+                onClick={handleNewConversation}
+                className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
+              >
+                New conversation
+              </button>
+            )}
+            <button
+              onClick={() =>
+                document
+                  .getElementById("features")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
+            >
+              Learn more
+            </button>
+          </div>
         </div>
       </motion.nav>
 
@@ -143,12 +164,23 @@ export default function LandingPage() {
           }}
           className="max-w-2xl mx-auto"
         >
-          <QueryBlock />
-          {message && (
-            <div className="mt-6 p-4 rounded-lg border border-border bg-black/[0.02]">
-              <p className="text-[15px] leading-relaxed text-black/70">{message}</p>
+          {messages.length > 0 && (
+            <div className="mb-4 flex flex-col gap-3">
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`p-3 rounded-lg text-[15px] leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-black text-white self-end max-w-[85%] ml-auto"
+                      : "bg-black/[0.04] text-black/70 self-start max-w-[85%]"
+                  }`}
+                >
+                  {msg.content}
+                </div>
+              ))}
             </div>
           )}
+          <QueryBlock />
           {podcasts.length > 0 && (
             <div className="mt-6 flex flex-col gap-4">
               {podcasts.map((podcast, index) => (

@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef } from "react";
 import { SpeechInput } from "../speech-input/speech-input";
 import { ArrowUpRight } from "lucide-react";
 import Spacer from "../spacer/spacer";
+import { usePodcasts } from "@/stores/usePodcasts";
 
 interface QueryBlockProps {
   onSubmit?: (text: string) => void;
@@ -15,6 +16,7 @@ const QueryBlock = ({
   const [text, setText] = useState("");
   const partialTextRef = useRef("");
   const baseTextRef = useRef("");
+  const { addMessage } = usePodcasts();
 
   // Handle real-time transcription (text deltas and final)
   const handleTranscript = useCallback((transcriptText: string, isFinal: boolean) => {
@@ -44,7 +46,9 @@ const QueryBlock = ({
 
   const handleSubmit = useCallback(async () => {
     if (text.trim()) {
-      onSubmit?.(text.trim());
+      const query = text.trim();
+      onSubmit?.(query);
+      addMessage({ role: "user", content: query });
 
       try {
         const response = await fetch("/api/query", {

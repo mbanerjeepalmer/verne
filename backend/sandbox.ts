@@ -86,6 +86,14 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   return { sandbox, url };
 }
 
+export function getSandboxStatus(): { ready: boolean; sandboxId: string | null; url: string | null } {
+  return {
+    ready: cachedSandbox !== null && cachedUrl !== null,
+    sandboxId: cachedSandbox?.sandboxId ?? null,
+    url: cachedUrl,
+  };
+}
+
 export async function initSandbox(): Promise<string> {
   if (cachedSandbox && cachedUrl) {
     const alive = await cachedSandbox.isRunning().catch(() => false);
@@ -113,11 +121,37 @@ export interface SandboxResponse {
   events: SandboxEvent[];
 }
 
+export async function killSandbox(): Promise<void> {
+  if (cachedSandbox) {
+    console.log(`Killing sandbox ${cachedSandbox.sandboxId}...`);
+    await cachedSandbox.kill().catch((err: unknown) =>
+      console.error("Error killing sandbox:", err)
+    );
+    cachedSandbox = null;
+    cachedUrl = null;
+    console.log("Sandbox killed.");
+  }
+}
+
+// Kill sandbox on server shutdown
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, async () => {
+    console.log(`Received ${signal}, shutting down sandbox...`);
+    await killSandbox();
+    process.exit(0);
+  });
+}
+
 export async function sendQuery(
   query: string,
   sessionId?: string
 ): Promise<SandboxResponse> {
   const url = await initSandbox();
+
+  // Keep the sandbox alive on each query
+  if (cachedSandbox) {
+    await cachedSandbox.setTimeout(300_000).catch(() => {});
+  }
 
   const body: Record<string, string> = { message: query };
   if (sessionId) {
