@@ -235,23 +235,31 @@ export async function sendQueryStream(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop()!;
+      const lines = buffer.split("\n");
+      buffer = lines.pop()!;
 
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const event = JSON.parse(line) as SandboxEvent & { session_id?: string };
-      if (event.type === "session") {
-        sessionIdOut = event.session_id ?? "";
-      } else if (event.type !== "done") {
-        onEvent(event);
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const event = JSON.parse(line) as SandboxEvent & { session_id?: string };
+          if (event.type === "session") {
+            sessionIdOut = event.session_id ?? "";
+          } else if (event.type !== "done") {
+            onEvent(event);
+          }
+        } catch (parseErr) {
+          console.error("Failed to parse stream event:", line, parseErr);
+        }
       }
     }
+  } finally {
+    reader.cancel().catch(() => {});
   }
 
   return { session_id: sessionIdOut };
