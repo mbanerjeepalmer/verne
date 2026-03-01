@@ -39,6 +39,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
   const [isMuted, setIsMuted] = React.useState(false)
   const [showVolume, setShowVolume] = React.useState(false)
   const isScrubbing = React.useRef(false)
+  const scrubTarget = React.useRef(start_time || 0)
   const { play: globalPlay, pause: globalPause } = useAudioPlayer()
 
   // Create audio element once
@@ -111,6 +112,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
   }
 
   const handleScrub = (time: number) => {
+    scrubTarget.current = time
     setCurrentTime(time)
   }
 
@@ -121,7 +123,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
   const handleScrubEnd = () => {
     isScrubbing.current = false
     if (audioRef.current) {
-      audioRef.current.currentTime = currentTime
+      audioRef.current.currentTime = scrubTarget.current
       globalPlay(src, audioRef.current)
       audioRef.current.play().catch(() => {})
     }

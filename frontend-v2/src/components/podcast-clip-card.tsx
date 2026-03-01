@@ -45,6 +45,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
   const [isMuted, setIsMuted] = React.useState(false)
   const [showVolume, setShowVolume] = React.useState(false)
   const isScrubbing = React.useRef(false)
+  const scrubTarget = React.useRef(start_time)
   const { play: globalPlay, pause: globalPause } = useAudioPlayer()
 
   // Unique ID for this clip (src + start/end to distinguish clips from same episode)
@@ -126,6 +127,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
   }
 
   const handleScrub = (time: number) => {
+    scrubTarget.current = time
     setCurrentTime(time)
   }
 
@@ -136,7 +138,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
   const handleScrubEnd = () => {
     isScrubbing.current = false
     if (audioRef.current) {
-      audioRef.current.currentTime = currentTime
+      audioRef.current.currentTime = scrubTarget.current
       globalPlay(clipId, audioRef.current)
       audioRef.current.play().catch(() => {})
     }
