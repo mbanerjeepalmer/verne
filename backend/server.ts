@@ -85,17 +85,31 @@ app.post("/query", async (c) => {
 
     console.log("Sandbox response:", JSON.stringify(result, null, 2));
 
+    // Extract episodes from post_episode tool calls
+    const episodes = result.events
+      .filter((e) => e.type === "tool_call" && e.tool_name === "post_episode")
+      .map((e) => e.args);
+
     // Extract the last assistant message
     const assistantEvents = result.events.filter((e) => e.type === "assistant");
     const lastMessage =
       assistantEvents.at(-1)?.content ?? "No response from agent.";
 
-    const broadcast = {
-      event_type: "message",
-      payload: {
-        message: lastMessage,
-      },
-    };
+    const broadcast =
+      episodes.length > 0
+        ? {
+            event_type: "episodes",
+            payload: {
+              message: lastMessage,
+              podcasts: episodes,
+            },
+          }
+        : {
+            event_type: "message",
+            payload: {
+              message: lastMessage,
+            },
+          };
 
     clients.forEach((ws) => {
       ws.send(JSON.stringify(broadcast));

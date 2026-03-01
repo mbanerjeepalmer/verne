@@ -1,4 +1,4 @@
-As we can see in `.playwright-mcp/page-2026-02-28T21-02-09-090Z.png` currently when the model responds, it can only respond with messages.
+As we can see in `.playwright-mcp/` currently when the model responds, it can only respond with messages.
 
 Instead we want:
 1. the Vibe agent to have access to a tool called post_episode , which will make a HTTP request to the `/broadcast` endpoint, adhering to the episode schema.
