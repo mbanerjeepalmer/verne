@@ -79,6 +79,13 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
     systemPrompt
   );
 
+  await sandbox.commands.run("mkdir -p /home/user/.vibe/tools");
+  const toolSource = readFileSync(
+    resolve(__dirname, "../packages/sandbox/tools/post_episode.py"),
+    "utf-8"
+  );
+  await sandbox.files.write("/home/user/.vibe/tools/post_episode.py", toolSource);
+
   const host = sandbox.getHost(SERVER_PORT);
   const url = `https://${host}`;
   console.log(`Sandbox URL: ${url}`);
@@ -114,6 +121,8 @@ export async function initSandbox(): Promise<string> {
 export interface SandboxEvent {
   type: string;
   content: string | null;
+  tool_name?: string;
+  args?: Record<string, any>;
 }
 
 export interface SandboxResponse {
