@@ -10,7 +10,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load .env from backend/ directory
 config({ path: resolve(__dirname, ".env") });
 
-const CLI_PATH = resolve(__dirname, "../listennotes-cli/podcast_search.py");
+const CLI_PODCAST_SEARCH_PATH = resolve(__dirname, "../listennotes-cli/podcast_search.py");
+const CLI_PODCAST_GET_PATH = resolve(__dirname, "../listennotes-cli/podcast_get.py");
+const CLI_PODCAST_BEST_PATH = resolve(__dirname, "../listennotes-cli/podcast_best.py");
+const CLI_PODCAST_RECS_PATH = resolve(__dirname, "../listennotes-cli/podcast_recommendations.py");
+const CLI_EPISODE_GET_PATH = resolve(__dirname, "../listennotes-cli/episode_get.py");
+const CLI_EPISODE_RECS_PATH = resolve(__dirname, "../listennotes-cli/episode_recommendations.py");
 const API_MODULE_PATH = resolve(__dirname, "../listennotes-cli/listennotes_api.py");
 
 const SERVER_PORT = 8000;
@@ -62,12 +67,25 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   ];
   await sandbox.files.write("/home/user/.env", envLines.join("\n") + "\n");
 
-  const cliSource = readFileSync(CLI_PATH, "utf-8");
-  await sandbox.files.write("/usr/local/bin/podcast-search", cliSource);
-  await sandbox.commands.run("chmod +x /usr/local/bin/podcast-search");
-
+  // Install API module first (needed by all CLI tools)
   const apiModuleSource = readFileSync(API_MODULE_PATH, "utf-8");
   await sandbox.files.write("/usr/local/bin/listennotes_api.py", apiModuleSource);
+
+  // Install all CLI tools
+  const cliTools = [
+    { path: CLI_PODCAST_SEARCH_PATH, name: "podcast-search" },
+    { path: CLI_PODCAST_GET_PATH, name: "podcast-get" },
+    { path: CLI_PODCAST_BEST_PATH, name: "podcast-best" },
+    { path: CLI_PODCAST_RECS_PATH, name: "podcast-recommendations" },
+    { path: CLI_EPISODE_GET_PATH, name: "episode-get" },
+    { path: CLI_EPISODE_RECS_PATH, name: "episode-recommendations" },
+  ];
+
+  for (const tool of cliTools) {
+    const source = readFileSync(tool.path, "utf-8");
+    await sandbox.files.write(`/usr/local/bin/${tool.name}`, source);
+    await sandbox.commands.run(`chmod +x /usr/local/bin/${tool.name}`);
+  }
 
   const systemPrompt = readFileSync(
     resolve(__dirname, "../packages/sandbox/prompts/podcast-agent.md"),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { Mic } from "lucide-react";
 import { LiveWaveform } from "@/components/ui/live-waveform";
 
@@ -32,6 +32,18 @@ function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
   return int16Array;
 }
 
+/** Returns true when the event target is a focusable text element, so we skip hotkeys while typing. */
+function isTypingFocused(): boolean {
+  const active = document.activeElement;
+  if (!active) return false;
+  const tag = active.tagName.toLowerCase();
+  return (
+    tag === "input" ||
+    tag === "textarea" ||
+    (active as HTMLElement).contentEditable === "true"
+  );
+}
+
 export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(function SpeechInput({
   onTranscript,
   onError,
@@ -43,6 +55,9 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
+  // Keep latest status accessible inside stable event listeners
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   const startTimer = useCallback(() => {
     setRecordingTime(0);
@@ -188,15 +203,45 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
     }
   };
 
+  // Hold Space → push-to-talk (starts on keydown, stops on keyup)
+  // Suppressed when a text input/textarea has focus
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat || isTypingFocused()) return;
+      e.preventDefault();
+      if (statusRef.current === "idle" || statusRef.current === "error") {
+        startRecording();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      if (statusRef.current === "recording") {
+        stopRecording();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [startRecording, stopRecording]);
+
   return (
     <div className="flex flex-col items-center gap-4">
       {status === "idle" && (
         <button
-          className="flex items-center gap-1 border px-2 p-1 rounded-md hover:bg-muted cursor-pointer"
+          className="flex items-center gap-1.5 border px-2 p-1 rounded-md hover:bg-muted cursor-pointer"
           onClick={handleClick}
+          title="Record voice (hold Space to talk)"
         >
           <Mic className="size-4" />
           <p className="text-sm">Record Voice</p>
+          <kbd className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono border border-black/20 bg-black/5 text-black/40 leading-none ml-0.5">
+            Space
+          </kbd>
         </button>
       )}
 
@@ -204,6 +249,7 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
         <button
           className="flex items-center gap-3 border px-2 p-1 rounded-md hover:bg-muted cursor-pointer"
           onClick={handleClick}
+          title="Stop recording (release Space)"
         >
           <div className="w-12 h-4 shrink-0">
             <LiveWaveform
@@ -214,8 +260,11 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
               barColor="currentColor"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <p className="text-sm">Recording {formatTime(recordingTime)}</p>
+            <kbd className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono border border-black/20 bg-black/5 text-black/40 leading-none">
+              Space
+            </kbd>
           </div>
         </button>
       )}
