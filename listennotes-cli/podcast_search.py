@@ -262,6 +262,7 @@ Examples:
 
         elif args.output == "compact":
             # Minimal fields for post_episode tool
+            import re
             keep = ["title_original", "audio", "audio_length_sec", "image", "thumbnail",
                     "description_original", "pub_date_ms", "link"]
             compact = {
@@ -271,6 +272,9 @@ Examples:
             }
             for item in results.get("results", []):
                 entry = {k: item.get(k) for k in keep if item.get(k) is not None}
+                # Strip HTML tags from description
+                if "description_original" in entry:
+                    entry["description_original"] = re.sub(r"<[^>]*>", "", entry["description_original"]).strip()
                 # Flatten podcast metadata
                 podcast = item.get("podcast", {})
                 if podcast.get("title_original"):
