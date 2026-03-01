@@ -6,8 +6,6 @@ import { useEffect, useRef } from "react";
 const MAX_RECONNECT_DELAY = 10000;
 
 const Websocket = () => {
-  const { setMessage, addMessage, setProcessing } = usePodcasts();
-
   const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
   if (!wsUrl) {
     throw new Error(
@@ -38,6 +36,8 @@ const Websocket = () => {
         const data = JSON.parse(event.data);
         const eventType = data.event_type;
         const payload = data.payload;
+
+        const { setMessage, addMessage, setProcessing } = usePodcasts.getState();
 
         console.log("Websocket event received: ", data);
 
@@ -92,7 +92,8 @@ const Websocket = () => {
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       if (socket.current) socket.current.close();
     };
-  }, [setMessage, addMessage, setProcessing]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- stable Zustand actions, run once
+  }, []);
 
   return <></>;
 };

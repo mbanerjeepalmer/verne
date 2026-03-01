@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { SpeechInput, SpeechInputHandle } from "../speech-input/speech-input";
 import { ArrowUpRight } from "lucide-react";
 import Spacer from "../spacer/spacer";
@@ -101,6 +101,25 @@ const QueryBlock = ({
       handleSubmit();
     }
   };
+
+  // Global Enter → submit when there's text and not typing in the textarea
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+  const textRef = useRef(text);
+  textRef.current = text;
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.shiftKey || e.metaKey || e.ctrlKey) return;
+      const tag = document.activeElement?.tagName.toLowerCase();
+      if (tag === "textarea" || tag === "input") return;
+      if (!textRef.current.trim()) return;
+      e.preventDefault();
+      handleSubmitRef.current();
+    };
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   return (
     <div className="w-full flex flex-col rounded-lg border border-border p-3">

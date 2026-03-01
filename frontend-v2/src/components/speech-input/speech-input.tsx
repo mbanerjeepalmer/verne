@@ -203,11 +203,11 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
     }
   };
 
-  // Hold Space → push-to-talk (starts on keydown, stops on keyup)
-  // Suppressed when a text input/textarea has focus
+  // Hold V → push-to-talk (starts on keydown, stops on keyup)
+  // Outside text fields: plain V. Inside text fields: Shift+V.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== "Space" || e.repeat || isTypingFocused()) return;
+      if (e.code !== "KeyV" || e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || isTypingFocused()) return;
       e.preventDefault();
       if (statusRef.current === "idle" || statusRef.current === "error") {
         startRecording();
@@ -215,7 +215,7 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code !== "Space") return;
+      if (e.code !== "KeyV") return;
       if (statusRef.current === "recording") {
         stopRecording();
       }
@@ -235,12 +235,12 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
         <button
           className="flex items-center gap-1.5 border px-2 p-1 rounded-md hover:bg-muted cursor-pointer"
           onClick={handleClick}
-          title="Record voice (hold Space to talk)"
+          title="Record voice (hold V to talk)"
         >
           <Mic className="size-4" />
           <p className="text-sm">Record Voice</p>
           <kbd className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono border border-black/20 bg-black/5 text-black/40 leading-none ml-0.5">
-            Space
+            V
           </kbd>
         </button>
       )}
@@ -249,7 +249,7 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
         <button
           className="flex items-center gap-3 border px-2 p-1 rounded-md hover:bg-muted cursor-pointer"
           onClick={handleClick}
-          title="Stop recording (release Space)"
+          title="Stop recording (release V)"
         >
           <div className="w-12 h-4 shrink-0">
             <LiveWaveform
@@ -263,7 +263,7 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
           <div className="flex items-center gap-1.5">
             <p className="text-sm">Recording {formatTime(recordingTime)}</p>
             <kbd className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono border border-black/20 bg-black/5 text-black/40 leading-none">
-              Space
+              V
             </kbd>
           </div>
         </button>

@@ -164,6 +164,7 @@ Bun.serve({
           // Handle transcription start
           if (data.type === "transcription.start") {
             console.log("[Transcription] Starting transcription for client");
+            clients.delete(ws); // Transcription sockets should not receive broadcasts
             const handler = await handleTranscriptionWebSocket(ws);
             transcriptionClients.set(ws, handler);
             // Send start signal to handler
