@@ -195,6 +195,7 @@ async def message_stream(req: MessageRequest):
         event_count = 0
         assistant_content_parts = []
         current_tool_span = None
+        errored = False
 
         with tracer.start_as_current_span(
             "agent.query",
@@ -204,7 +205,7 @@ async def message_stream(req: MessageRequest):
             },
         ) as root_span:
             try:
-                async with asyncio.timeout(90):
+                async with asyncio.timeout(180):
                     async for event in agent.act(req.message):
                         etype = type(event).__name__
 
@@ -240,14 +241,16 @@ async def message_stream(req: MessageRequest):
                         elif etype == "ReasoningEvent":
                             yield _json.dumps({"type": "reasoning", "content": event.content}) + "\n"
             except TimeoutError:
-                logging.error("Agent timed out after 90s for message: %s", req.message[:200])
-                root_span.set_status(StatusCode.ERROR, "Agent timed out after 90s")
+                errored = True
+                logging.error("Agent timed out after 180s for message: %s", req.message[:200])
+                root_span.set_status(StatusCode.ERROR, "Agent timed out after 180s")
                 root_span.set_attribute("error.type", "timeout")
                 if current_tool_span:
                     current_tool_span.set_status(StatusCode.ERROR, "Timed out")
                     current_tool_span.end()
                 yield _json.dumps({"type": "error", "content": "The agent timed out processing your request. Please try again."}) + "\n"
             except Exception as exc:
+                errored = True
                 logging.exception("Error streaming agent events")
                 root_span.set_status(StatusCode.ERROR, str(exc))
                 root_span.set_attribute("error.type", type(exc).__name__)
@@ -259,12 +262,12 @@ async def message_stream(req: MessageRequest):
             finally:
                 context.detach(token)
 
-            if event_count == 0:
+            if not errored and event_count == 0:
                 logging.warning("Agent produced no events for message: %s", req.message[:200])
                 root_span.set_status(StatusCode.ERROR, "Empty model response")
                 root_span.set_attribute("error.type", "empty_response")
                 yield _json.dumps({"type": "error", "content": "The model returned an empty response. Please try again."}) + "\n"
-            else:
+            elif not errored:
                 root_span.set_attribute("output", "".join(assistant_content_parts)[:4000])
                 root_span.set_attribute("event_count", event_count)
 

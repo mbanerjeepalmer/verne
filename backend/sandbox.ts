@@ -191,7 +191,7 @@ export async function sendQuery(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(180_000),
   });
 
   if (!resp.ok) {
@@ -222,7 +222,7 @@ export async function sendQueryStream(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(180_000),
   });
 
   if (!resp.ok) {
