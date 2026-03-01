@@ -7,7 +7,7 @@ import QueryBlock from "@/components/query-block/query-block";
 import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
 import { useAudioPlayer } from "@/stores/useAudioPlayer";
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import { Suspense, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MOCK_EPISODES } from "@/data/mock-episodes";
 import { StickyPlayer } from "@/components/sticky-player";
@@ -18,6 +18,14 @@ import Markdown from "react-markdown";
 const SCROLL_TYPES = new Set<string | undefined>([undefined, "assistant", "episodes", "error"]);
 
 export default function ChatPage() {
+  return (
+    <Suspense>
+      <ChatPageInner />
+    </Suspense>
+  );
+}
+
+function ChatPageInner() {
   const { messages, clearMessages, setMessage, addMessage, isVoiceMode, setVoiceMode, isProcessing, setProcessing } =
     usePodcasts();
   const activeItem = useAudioPlayer((s) => s.activeItem);
