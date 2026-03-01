@@ -3,7 +3,8 @@
 .obsidian/
 node_modules/
 dist/
-.claude/
+.claude/*
+!.claude/skills/
 .playwright-mcp/
 .DS_Store
 recordings/
