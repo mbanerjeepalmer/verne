@@ -2,14 +2,15 @@
 
 import VerneLogo from "@/components/icons/verne-logo";
 import { FullPodcastCard } from "@/components/full-podcast-card";
+import { MessageTTS } from "@/components/message-tts/message-tts";
 import QueryBlock from "@/components/query-block/query-block";
 import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function ChatPage() {
-  const { messages, clearMessages, setMessage, addMessage } =
+  const { messages, clearMessages, setMessage, addMessage, isVoiceMode } =
     usePodcasts();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -45,6 +46,17 @@ export default function ChatPage() {
     setMessage(null);
     router.push("/");
   };
+
+  // Find the last assistant text message for voice-mode auto-play
+  const lastAssistantIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "assistant" && (!m.type || m.type === "assistant") && m.content.trim()) {
+        return i;
+      }
+    }
+    return -1;
+  }, [messages]);
 
   return (
     <div className="h-screen flex flex-col bg-white text-black selection:bg-black selection:text-white">
@@ -136,9 +148,15 @@ export default function ChatPage() {
             return (
               <div
                 key={i}
-                className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70 self-start max-w-[85%]"
+                className="self-start max-w-[85%]"
               >
-                {msg.content}
+                <div className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70">
+                  {msg.content}
+                </div>
+                <MessageTTS
+                  text={msg.content}
+                  autoPlay={isVoiceMode && i === lastAssistantIdx}
+                />
               </div>
             );
           })}
