@@ -187,7 +187,8 @@ export async function sendQuery(
 export async function sendQueryStream(
   query: string,
   onEvent: (event: SandboxEvent) => void,
-  sessionId?: string
+  sessionId?: string,
+  context?: Record<string, unknown>
 ): Promise<{ session_id: string }> {
   const url = await initSandbox();
 
@@ -195,15 +196,16 @@ export async function sendQueryStream(
     await cachedSandbox.setTimeout(300_000).catch(() => {});
   }
 
-  const body: Record<string, string> = { message: query };
-  if (sessionId) {
-    body.session_id = sessionId;
-  }
+  const payload = {
+    message: query,
+    ...(sessionId && { session_id: sessionId }),
+    ...(context && { context }),
+  };
 
   const resp = await fetch(`${url}/message/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
     signal: AbortSignal.timeout(120_000),
   });
 

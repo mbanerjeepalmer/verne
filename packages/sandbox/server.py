@@ -90,9 +90,15 @@ app = FastAPI(title="Vibe Agent Server")
 sessions: dict[str, AgentLoop] = {}
 
 
+class ListeningContext(BaseModel):
+    currentEpisode: dict | None = None
+    conversationEpisodes: list[str] | None = None
+
+
 class MessageRequest(BaseModel):
     message: str
     session_id: str | None = Field(default=None, description="Reuse an existing session")
+    context: ListeningContext | None = Field(default=None, description="What the user is currently listening to")
 
 
 class EventOut(BaseModel):
@@ -107,6 +113,31 @@ class EventOut(BaseModel):
 class MessageResponse(BaseModel):
     session_id: str
     events: list[EventOut]
+
+
+def _build_message(message: str, context: ListeningContext | None) -> str:
+    """Prepend listening context to the user message if available."""
+    if not context:
+        return message
+
+    parts: list[str] = []
+    if context.currentEpisode:
+        ep = context.currentEpisode
+        name = ep.get("name", "unknown")
+        current = ep.get("currentTime", 0)
+        duration = ep.get("duration", 0)
+        paused = ep.get("paused", False)
+        status = "paused" if paused else "playing"
+        parts.append(f"Currently {status}: \"{name}\" at {current}s / {duration}s")
+
+    if context.conversationEpisodes:
+        parts.append(f"Episodes in conversation: {', '.join(context.conversationEpisodes)}")
+
+    if not parts:
+        return message
+
+    ctx_block = "\n".join(parts)
+    return f"[Listening context]\n{ctx_block}\n\n{message}"
 
 
 def _get_or_create_session(session_id: str | None) -> tuple[str, AgentLoop]:
@@ -134,7 +165,8 @@ async def message(req: MessageRequest):
         token = context.attach(ctx)
 
         events: list[EventOut] = []
-        async for event in agent.act(req.message):
+        enriched_message = _build_message(req.message, req.context)
+        async for event in agent.act(enriched_message):
             etype = type(event).__name__
 
             if etype == "AssistantEvent":
@@ -176,6 +208,8 @@ async def message_stream(req: MessageRequest):
         logging.exception("Error creating session for /message/stream")
         return JSONResponse(status_code=500, content={"error": traceback.format_exc()})
 
+    enriched_message = _build_message(req.message, req.context)
+
     async def generate():
         from opentelemetry import baggage, context
         ctx = baggage.set_baggage("session.id", sid)
@@ -183,7 +217,7 @@ async def message_stream(req: MessageRequest):
 
         yield _json.dumps({"type": "session", "session_id": sid}) + "\n"
         try:
-            async for event in agent.act(req.message):
+            async for event in agent.act(enriched_message):
                 etype = type(event).__name__
 
                 if etype == "AssistantEvent":

@@ -5,6 +5,7 @@ import { SpeechInput } from "../speech-input/speech-input";
 import { ArrowUpRight } from "lucide-react";
 import Spacer from "../spacer/spacer";
 import { usePodcasts } from "@/stores/usePodcasts";
+import { useAudioPlayer } from "@/stores/useAudioPlayer";
 
 interface QueryBlockProps {
   onSubmit?: (text: string) => void;
@@ -19,7 +20,8 @@ const QueryBlock = ({
   const [text, setText] = useState("");
   const partialTextRef = useRef("");
   const baseTextRef = useRef("");
-  const { addMessage, setVoiceMode } = usePodcasts();
+  const { addMessage, setVoiceMode, messages } = usePodcasts();
+  const { activeEpisodeId, activeAudio, activeMeta } = useAudioPlayer();
 
   // Handle real-time transcription (text deltas and final)
   // Auto-enable voice mode when user starts speaking
@@ -62,13 +64,34 @@ const QueryBlock = ({
       addMessage({ role: "user", content: query });
       onSubmit?.(query);
 
+      // Build listening context for the agent
+      const context: Record<string, unknown> = {};
+      if (activeEpisodeId && activeAudio && activeMeta) {
+        context.currentEpisode = {
+          name: activeMeta.name,
+          currentTime: Math.floor(activeAudio.currentTime),
+          duration: activeMeta.duration,
+          paused: activeAudio.paused,
+        };
+      }
+      // Collect episode names from the conversation so the agent knows what's been discussed
+      const episodeNames = messages
+        .filter((m) => m.type === "episodes" && m.episodes)
+        .flatMap((m) => m.episodes!.map((e) => e.name));
+      if (episodeNames.length > 0) {
+        context.conversationEpisodes = episodeNames;
+      }
+
       try {
         const response = await fetch("/api/query", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify({
+            query,
+            ...(Object.keys(context).length > 0 && { context }),
+          }),
         });
 
         if (!response.ok) {
@@ -81,7 +104,7 @@ const QueryBlock = ({
         console.error("Error submitting query:", error);
       }
     }
-  }, [text, onSubmit, navigateOnly, addMessage]);
+  }, [text, onSubmit, navigateOnly, addMessage, activeEpisodeId, activeAudio, activeMeta, messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query } = body;
+    const { query, context } = body;
 
     if (!query) {
       return NextResponse.json(
@@ -12,14 +12,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Forward the query to the Hono backend
+    // Forward the query (and optional listening context) to the Hono backend
     const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
     const response = await fetch(`${backendUrl}/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, ...(context && { context }) }),
     });
 
     if (!response.ok) {

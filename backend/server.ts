@@ -71,9 +71,9 @@ app.post("/sandbox/restart", async (c) => {
 });
 
 app.post("/query", async (c) => {
-  const body = await c.req.json<{ query: string }>();
+  const body = await c.req.json<{ query: string; context?: Record<string, unknown> }>();
 
-  console.log(`Received query:`, body.query);
+  console.log(`Received query:`, body.query, body.context ? `(with context)` : "");
 
   try {
     // Immediate feedback before sandbox responds
@@ -105,7 +105,8 @@ app.post("/query", async (c) => {
         const msg = JSON.stringify(broadcast);
         clients.forEach((ws) => ws.send(msg));
       },
-      currentSessionId ?? undefined
+      currentSessionId ?? undefined,
+      body.context
     );
 
     if (result.session_id) {
