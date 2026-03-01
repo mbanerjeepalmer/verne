@@ -7,6 +7,7 @@ import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MOCK_EPISODES } from "@/data/mock-episodes";
 
 export default function ChatPage() {
   const { messages, clearMessages, setMessage, addMessage } =
@@ -14,9 +15,17 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isDevMode = searchParams.has("dev");
+
   // Auto-submit query from URL param (coming from landing page)
   const initialQuerySubmitted = useRef(false);
   useEffect(() => {
+    if (isDevMode && !initialQuerySubmitted.current) {
+      initialQuerySubmitted.current = true;
+      addMessage({ role: "assistant", content: "", type: "episodes", episodes: MOCK_EPISODES });
+      return;
+    }
+
     const q = searchParams.get("q");
     if (!q || initialQuerySubmitted.current) return;
     initialQuerySubmitted.current = true;
@@ -29,7 +38,7 @@ export default function ChatPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: q }),
     }).catch((error) => console.error("Error submitting initial query:", error));
-  }, [searchParams, addMessage, router]);
+  }, [searchParams, addMessage, router, isDevMode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
