@@ -79,6 +79,13 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
     systemPrompt
   );
 
+  await sandbox.commands.run("mkdir -p /home/user/.vibe/tools");
+  const toolSource = readFileSync(
+    resolve(__dirname, "../packages/sandbox/tools/post_episode.py"),
+    "utf-8"
+  );
+  await sandbox.files.write("/home/user/.vibe/tools/post_episode.py", toolSource);
+
   const host = sandbox.getHost(SERVER_PORT);
   const url = `https://${host}`;
   console.log(`Sandbox URL: ${url}`);
@@ -114,6 +121,10 @@ export async function initSandbox(): Promise<string> {
 export interface SandboxEvent {
   type: string;
   content: string | null;
+  tool_name?: string;
+  args?: Record<string, any>;
+  result?: string | null;
+  error?: string | null;
 }
 
 export interface SandboxResponse {
@@ -171,4 +182,59 @@ export async function sendQuery(
   }
 
   return (await resp.json()) as SandboxResponse;
+}
+
+export async function sendQueryStream(
+  query: string,
+  onEvent: (event: SandboxEvent) => void,
+  sessionId?: string
+): Promise<{ session_id: string }> {
+  const url = await initSandbox();
+
+  if (cachedSandbox) {
+    await cachedSandbox.setTimeout(300_000).catch(() => {});
+  }
+
+  const body: Record<string, string> = { message: query };
+  if (sessionId) {
+    body.session_id = sessionId;
+  }
+
+  const resp = await fetch(`${url}/message/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Sandbox stream request failed: ${resp.status} — ${text}`);
+  }
+
+  let sessionIdOut = "";
+  const reader = resp.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop()!;
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line) as SandboxEvent & { session_id?: string };
+      if (event.type === "session") {
+        sessionIdOut = event.session_id ?? "";
+      } else if (event.type !== "done") {
+        onEvent(event);
+      }
+    }
+  }
+
+  return { session_id: sessionIdOut };
 }

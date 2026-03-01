@@ -66,8 +66,11 @@ def _init_otel():
     logging.info(f"OTEL endpoint: {endpoint}")
     logging.info(f"OTEL headers configured: {list(headers.keys())}")
 
+    from opentelemetry.processor.baggage import BaggageSpanProcessor, ALLOW_ALL_BAGGAGE_KEYS
+
     exporter = OTLPSpanExporter(endpoint=endpoint, headers=headers)
     provider = TracerProvider()
+    provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
     MistralAiInstrumentor().instrument()
@@ -120,12 +123,15 @@ def _get_or_create_session(session_id: str | None) -> tuple[str, AgentLoop]:
     return sid, agent
 
 
-# TODO: SSE streaming endpoint that yields events as they arrive
 @app.post("/message", response_model=MessageResponse)
 async def message(req: MessageRequest):
     """Send a message to the agent and collect all response events."""
     try:
         sid, agent = _get_or_create_session(req.session_id)
+
+        from opentelemetry import baggage, context
+        ctx = baggage.set_baggage("session.id", sid)
+        token = context.attach(ctx)
 
         events: list[EventOut] = []
         async for event in agent.act(req.message):
@@ -148,12 +154,56 @@ async def message(req: MessageRequest):
                         error=event.error,
                     )
                 )
-            # Skip ReasoningEvent, CompactStartEvent, etc. — internal details
+            elif etype == "ReasoningEvent":
+                events.append(EventOut(type="reasoning", content=event.content))
 
+        context.detach(token)
         return MessageResponse(session_id=sid, events=events)
     except Exception:
         logging.exception("Error in /message")
         return JSONResponse(status_code=500, content={"error": traceback.format_exc()})
+
+
+@app.post("/message/stream")
+async def message_stream(req: MessageRequest):
+    """Stream agent events as newline-delimited JSON (NDJSON)."""
+    from fastapi.responses import StreamingResponse
+    import json as _json
+
+    try:
+        sid, agent = _get_or_create_session(req.session_id)
+    except Exception:
+        logging.exception("Error creating session for /message/stream")
+        return JSONResponse(status_code=500, content={"error": traceback.format_exc()})
+
+    async def generate():
+        from opentelemetry import baggage, context
+        ctx = baggage.set_baggage("session.id", sid)
+        token = context.attach(ctx)
+
+        yield _json.dumps({"type": "session", "session_id": sid}) + "\n"
+        try:
+            async for event in agent.act(req.message):
+                etype = type(event).__name__
+
+                if etype == "AssistantEvent":
+                    yield _json.dumps({"type": "assistant", "content": event.content}) + "\n"
+                elif etype == "ToolCallEvent":
+                    args_dict = event.args.model_dump() if event.args else None
+                    yield _json.dumps({"type": "tool_call", "tool_name": event.tool_name, "args": args_dict}) + "\n"
+                elif etype == "ToolResultEvent":
+                    result_text = str(event.result) if event.result else None
+                    yield _json.dumps({"type": "tool_result", "tool_name": event.tool_name, "result": result_text, "error": event.error}) + "\n"
+                elif etype == "ReasoningEvent":
+                    yield _json.dumps({"type": "reasoning", "content": event.content}) + "\n"
+        except Exception:
+            logging.exception("Error streaming agent events")
+            yield _json.dumps({"type": "error", "content": traceback.format_exc()}) + "\n"
+        finally:
+            context.detach(token)
+        yield _json.dumps({"type": "done"}) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @app.get("/health")
