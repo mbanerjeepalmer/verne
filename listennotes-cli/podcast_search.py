@@ -168,9 +168,9 @@ Examples:
     # Output format
     parser.add_argument(
         "--output", "-o",
-        choices=["json", "pretty", "summary"],
+        choices=["json", "pretty", "summary", "compact"],
         default="json",
-        help="Output format (default: json)"
+        help="Output format (default: json). Use 'compact' for minimal fields needed by post_episode."
     )
 
     parser.add_argument(
@@ -259,6 +259,19 @@ Examples:
                         print(f"   Episodes: {episode_count}")
 
                 print(f"   ID: {item.get('id', 'N/A')}")
+
+        elif args.output == "compact":
+            # Minimal fields for post_episode tool
+            keep = ["title_original", "audio", "audio_length_sec", "image", "thumbnail"]
+            compact = {
+                "count": results.get("count", 0),
+                "total": results.get("total", 0),
+                "results": [
+                    {k: item.get(k) for k in keep if item.get(k) is not None}
+                    for item in results.get("results", [])
+                ],
+            }
+            print(json.dumps(compact, indent=2))
 
         elif args.output == "summary":
             count = results.get('count', 0)

@@ -9,6 +9,7 @@ export const vibeTemplate = Template()
     "requests",
     "opentelemetry-instrumentation-mistralai",
     "opentelemetry-exporter-otlp-proto-http",
+    "opentelemetry-processor-baggage",
   ])
   .copy("server.py", "/home/user/server.py")
   .setStartCmd(
