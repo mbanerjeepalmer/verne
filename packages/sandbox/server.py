@@ -22,6 +22,7 @@ def _load_env():
             return
 
 
+import asyncio
 import logging
 import traceback
 
@@ -75,6 +76,12 @@ def _init_otel():
     trace.set_tracer_provider(provider)
     MistralAiInstrumentor().instrument()
     logging.info("MistralAI OpenTelemetry instrumentation enabled")
+
+
+def _get_tracer():
+    """Return a tracer, or a no-op tracer if OTEL is not configured."""
+    from opentelemetry import trace
+    return trace.get_tracer("verne.agent")
 
 # Unlock config paths before importing AgentLoop (required by vibe SDK)
 from vibe.core.paths.config_paths import unlock_config_paths
@@ -178,29 +185,89 @@ async def message_stream(req: MessageRequest):
 
     async def generate():
         from opentelemetry import baggage, context
+        from opentelemetry.trace import StatusCode
+
+        tracer = _get_tracer()
         ctx = baggage.set_baggage("session.id", sid)
         token = context.attach(ctx)
 
         yield _json.dumps({"type": "session", "session_id": sid}) + "\n"
-        try:
-            async for event in agent.act(req.message):
-                etype = type(event).__name__
+        event_count = 0
+        assistant_content_parts = []
+        current_tool_span = None
 
-                if etype == "AssistantEvent":
-                    yield _json.dumps({"type": "assistant", "content": event.content}) + "\n"
-                elif etype == "ToolCallEvent":
-                    args_dict = event.args.model_dump() if event.args else None
-                    yield _json.dumps({"type": "tool_call", "tool_name": event.tool_name, "args": args_dict}) + "\n"
-                elif etype == "ToolResultEvent":
-                    result_text = str(event.result) if event.result else None
-                    yield _json.dumps({"type": "tool_result", "tool_name": event.tool_name, "result": result_text, "error": event.error}) + "\n"
-                elif etype == "ReasoningEvent":
-                    yield _json.dumps({"type": "reasoning", "content": event.content}) + "\n"
-        except Exception:
-            logging.exception("Error streaming agent events")
-            yield _json.dumps({"type": "error", "content": traceback.format_exc()}) + "\n"
-        finally:
-            context.detach(token)
+        with tracer.start_as_current_span(
+            "agent.query",
+            attributes={
+                "input": req.message,
+                "session.id": sid,
+            },
+        ) as root_span:
+            try:
+                async with asyncio.timeout(90):
+                    async for event in agent.act(req.message):
+                        etype = type(event).__name__
+
+                        if etype == "AssistantEvent":
+                            event_count += 1
+                            assistant_content_parts.append(event.content or "")
+                            yield _json.dumps({"type": "assistant", "content": event.content}) + "\n"
+                        elif etype == "ToolCallEvent":
+                            event_count += 1
+                            args_dict = event.args.model_dump() if event.args else None
+                            # Start a span for this tool call
+                            current_tool_span = tracer.start_span(
+                                f"tool.{event.tool_name}",
+                                attributes={
+                                    "tool.name": event.tool_name,
+                                    "tool.args": _json.dumps(args_dict) if args_dict else "",
+                                },
+                            )
+                            yield _json.dumps({"type": "tool_call", "tool_name": event.tool_name, "args": args_dict}) + "\n"
+                        elif etype == "ToolResultEvent":
+                            event_count += 1
+                            result_text = str(event.result) if event.result else None
+                            # Close the matching tool span
+                            if current_tool_span:
+                                if event.error:
+                                    current_tool_span.set_status(StatusCode.ERROR, event.error)
+                                    current_tool_span.set_attribute("tool.error", event.error)
+                                else:
+                                    current_tool_span.set_attribute("output", (result_text or "")[:2000])
+                                current_tool_span.end()
+                                current_tool_span = None
+                            yield _json.dumps({"type": "tool_result", "tool_name": event.tool_name, "result": result_text, "error": event.error}) + "\n"
+                        elif etype == "ReasoningEvent":
+                            yield _json.dumps({"type": "reasoning", "content": event.content}) + "\n"
+            except TimeoutError:
+                logging.error("Agent timed out after 90s for message: %s", req.message[:200])
+                root_span.set_status(StatusCode.ERROR, "Agent timed out after 90s")
+                root_span.set_attribute("error.type", "timeout")
+                if current_tool_span:
+                    current_tool_span.set_status(StatusCode.ERROR, "Timed out")
+                    current_tool_span.end()
+                yield _json.dumps({"type": "error", "content": "The agent timed out processing your request. Please try again."}) + "\n"
+            except Exception as exc:
+                logging.exception("Error streaming agent events")
+                root_span.set_status(StatusCode.ERROR, str(exc))
+                root_span.set_attribute("error.type", type(exc).__name__)
+                root_span.set_attribute("error.message", str(exc)[:1000])
+                if current_tool_span:
+                    current_tool_span.set_status(StatusCode.ERROR, str(exc))
+                    current_tool_span.end()
+                yield _json.dumps({"type": "error", "content": traceback.format_exc()}) + "\n"
+            finally:
+                context.detach(token)
+
+            if event_count == 0:
+                logging.warning("Agent produced no events for message: %s", req.message[:200])
+                root_span.set_status(StatusCode.ERROR, "Empty model response")
+                root_span.set_attribute("error.type", "empty_response")
+                yield _json.dumps({"type": "error", "content": "The model returned an empty response. Please try again."}) + "\n"
+            else:
+                root_span.set_attribute("output", "".join(assistant_content_parts)[:4000])
+                root_span.set_attribute("event_count", event_count)
+
         yield _json.dumps({"type": "done"}) + "\n"
 
     return StreamingResponse(generate(), media_type="application/x-ndjson")
