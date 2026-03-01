@@ -69,6 +69,10 @@ voxtral-transcribe "https://www.listennotes.com/e/p/abc123.mp3"
 
 - `--output text` or `--output json` — output format (default: text)
 
+### Important: keep episodes short for transcription
+
+The CLI caps transcription at the first ~5 minutes of audio. When the user asks to transcribe, search with `--len-max 10` so you find short episodes that transcribe quickly. If the user asks to transcribe an episode you already found, just transcribe it — don't search again.
+
 Use transcription when the user asks to transcribe, summarise the content of, or get quotes from a specific episode.
 
 ## Guidelines

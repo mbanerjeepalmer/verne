@@ -8,6 +8,7 @@ import sys
 import os
 import json
 import argparse
+import io
 import requests
 
 MISTRAL_API_URL = "https://api.mistral.ai/v1/audio/transcriptions"
@@ -86,7 +87,15 @@ Examples:
 
     content_type = audio_resp.headers.get("Content-Type")
     mime = detect_mime(content_type, args.audio_url)
-    print(f"Audio: {len(audio_resp.content)} bytes, type: {mime}", file=sys.stderr)
+    audio_bytes = audio_resp.content
+
+    # Truncate to first 5 minutes to keep transcription fast (~10s)
+    MAX_BYTES = 5 * 60 * 16_000  # ~5 min at typical podcast bitrate
+    if len(audio_bytes) > MAX_BYTES:
+        audio_bytes = audio_bytes[:MAX_BYTES]
+        print(f"Audio truncated to first ~5 min ({len(audio_bytes)} bytes)", file=sys.stderr)
+
+    print(f"Audio: {len(audio_bytes)} bytes, type: {mime}", file=sys.stderr)
 
     # Call Mistral transcription API
     model_id = MODELS[args.model]
@@ -96,7 +105,7 @@ Examples:
             MISTRAL_API_URL,
             headers={"Authorization": f"Bearer {api_key}"},
             data={"model": model_id},
-            files={"file": ("audio.mp3", audio_resp.content, mime)},
+            files={"file": ("audio.mp3", audio_bytes, mime)},
             timeout=300,
         )
     except requests.exceptions.RequestException as e:
