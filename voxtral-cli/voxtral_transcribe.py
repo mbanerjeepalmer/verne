@@ -1,88 +1,65 @@
 #!/usr/bin/env python3
 """
 Voxtral Transcription CLI
-Transcribe podcast audio with speaker diarization using Voxtral on Amazon Bedrock.
+Transcribe podcast audio with speaker diarization using Voxtral via Mistral API.
 """
 
 import sys
 import os
 import json
-import base64
 import argparse
 import requests
 
+MISTRAL_API_URL = "https://api.mistral.ai/v1/audio/transcriptions"
+
 MODELS = {
-    "mini": "mistral.voxtral-mini-3b-2507",
-    "small": "mistral.voxtral-small-24b-2507",
+    "mini": "voxtral-mini-transcribe-2507",
 }
 
-REGION = "us-west-2"
-
-DEFAULT_PROMPT = (
-    "Transcribe the following audio with speaker diarization. "
-    "Label each speaker (e.g. Speaker 1, Speaker 2) and include timestamps "
-    "in [MM:SS] format at natural paragraph breaks. "
-    "Output the transcript as plain text."
-)
-
-# Map common Content-Type values and extensions to Bedrock-supported audio formats
-CONTENT_TYPE_MAP = {
-    "audio/mpeg": "mp3",
-    "audio/mp3": "mp3",
-    "audio/mp4": "mp4",
-    "audio/wav": "wav",
-    "audio/x-wav": "wav",
-    "audio/webm": "webm",
-    "audio/ogg": "ogg",
-    "audio/flac": "flac",
-}
-
-EXTENSION_MAP = {
-    ".mp3": "mp3",
-    ".mp4": "mp4",
-    ".m4a": "mp4",
-    ".wav": "wav",
-    ".webm": "webm",
-    ".ogg": "ogg",
-    ".flac": "flac",
+EXTENSION_TO_MIME = {
+    ".mp3": "audio/mpeg",
+    ".mp4": "audio/mp4",
+    ".m4a": "audio/mp4",
+    ".wav": "audio/wav",
+    ".webm": "audio/webm",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
 }
 
 
-def detect_format(content_type: str | None, url: str) -> str:
-    """Detect audio format from Content-Type header or URL extension."""
+def detect_mime(content_type: str | None, url: str) -> str:
+    """Detect MIME type from Content-Type header or URL extension."""
     if content_type:
         ct = content_type.split(";")[0].strip().lower()
-        if ct in CONTENT_TYPE_MAP:
-            return CONTENT_TYPE_MAP[ct]
+        if ct.startswith("audio/"):
+            return ct
 
     from urllib.parse import urlparse
     path = urlparse(url).path.lower()
-    for ext, fmt in EXTENSION_MAP.items():
+    for ext, mime in EXTENSION_TO_MIME.items():
         if path.endswith(ext):
-            return fmt
+            return mime
 
-    return "mp3"  # sensible default for podcast audio
+    return "audio/mpeg"
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Transcribe audio with speaker diarization using Voxtral on Amazon Bedrock",
+        description="Transcribe audio using Voxtral via Mistral API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   voxtral-transcribe https://example.com/episode.mp3
-  voxtral-transcribe https://example.com/episode.mp3 --model mini
   voxtral-transcribe https://example.com/episode.mp3 --output json
-  voxtral-transcribe https://example.com/episode.mp3 --prompt "Summarise this audio"
         """,
     )
 
     parser.add_argument("audio_url", help="URL of the audio file to transcribe")
     parser.add_argument(
         "--model", "-m",
-        choices=["mini", "small"],
-        default="small",
-        help="Voxtral model size (default: small)",
+        choices=list(MODELS.keys()),
+        default="mini",
+        help="Voxtral model size (default: mini)",
     )
     parser.add_argument(
         "--output", "-o",
@@ -90,17 +67,12 @@ Examples:
         default="text",
         help="Output format (default: text)",
     )
-    parser.add_argument(
-        "--prompt", "-p",
-        default=DEFAULT_PROMPT,
-        help="Custom prompt for the model",
-    )
 
     args = parser.parse_args()
 
-    api_key = os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
+    api_key = os.environ.get("MISTRAL_API_KEY")
     if not api_key:
-        print("Error: AWS_BEARER_TOKEN_BEDROCK environment variable is required", file=sys.stderr)
+        print("Error: MISTRAL_API_KEY environment variable is required", file=sys.stderr)
         sys.exit(1)
 
     # Download audio
@@ -113,66 +85,34 @@ Examples:
         sys.exit(1)
 
     content_type = audio_resp.headers.get("Content-Type")
-    audio_format = detect_format(content_type, args.audio_url)
-    audio_b64 = base64.b64encode(audio_resp.content).decode("ascii")
+    mime = detect_mime(content_type, args.audio_url)
+    print(f"Audio: {len(audio_resp.content)} bytes, type: {mime}", file=sys.stderr)
 
-    print(f"Audio: {len(audio_resp.content)} bytes, format: {audio_format}", file=sys.stderr)
-
-    # Build Bedrock Converse request
+    # Call Mistral transcription API
     model_id = MODELS[args.model]
-    url = f"https://bedrock-runtime.{REGION}.amazonaws.com/model/{model_id}/converse"
-
-    body = {
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "audio": {
-                            "format": audio_format,
-                            "source": {"bytes": audio_b64},
-                        }
-                    },
-                    {"text": args.prompt},
-                ],
-            }
-        ],
-        "inferenceConfig": {"temperature": 0.0},
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-    }
-
-    print(f"Calling Bedrock ({model_id})...", file=sys.stderr)
+    print(f"Transcribing ({model_id})...", file=sys.stderr)
     try:
-        resp = requests.post(url, headers=headers, json=body, timeout=300)
+        resp = requests.post(
+            MISTRAL_API_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            data={"model": model_id},
+            files={"file": ("audio.mp3", audio_resp.content, mime)},
+            timeout=300,
+        )
     except requests.exceptions.RequestException as e:
-        print(f"Error calling Bedrock: {e}", file=sys.stderr)
+        print(f"Error calling Mistral API: {e}", file=sys.stderr)
         sys.exit(1)
 
     if resp.status_code != 200:
-        print(f"Bedrock error {resp.status_code}: {resp.text}", file=sys.stderr)
+        print(f"Mistral API error {resp.status_code}: {resp.text}", file=sys.stderr)
         sys.exit(1)
 
     result = resp.json()
 
-    # Extract text from response
-    output_text = ""
-    for block in result.get("output", {}).get("message", {}).get("content", []):
-        if "text" in block:
-            output_text += block["text"]
-
     if args.output == "json":
-        out = {
-            "model": model_id,
-            "transcript": output_text,
-            "usage": result.get("usage", {}),
-        }
-        print(json.dumps(out, indent=2))
+        print(json.dumps(result, indent=2))
     else:
-        print(output_text)
+        print(result.get("text", ""))
 
 
 if __name__ == "__main__":

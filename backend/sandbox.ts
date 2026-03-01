@@ -24,8 +24,6 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   const LISTENNOTES_API_KEY = process.env.LISTENNOTES_API_KEY ?? "";
   const LANGFUSE_PUBLIC_KEY = process.env.LANGFUSE_PUBLIC_KEY ?? "";
   const LANGFUSE_SECRET_KEY = process.env.LANGFUSE_SECRET_KEY ?? "";
-  const AWS_BEARER_TOKEN_BEDROCK = process.env.AWS_BEARER_TOKEN_BEDROCK ?? "";
-
   if (!MISTRAL_API_KEY) {
     throw new Error("MISTRAL_API_KEY is required in .env");
   }
@@ -45,7 +43,6 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
     envs: {
       MISTRAL_API_KEY,
       LISTENNOTES_API_KEY,
-      AWS_BEARER_TOKEN_BEDROCK,
       ...(langfuseOtelAuth && {
         OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "https://cloud.langfuse.com/api/public/otel/v1/traces",
         OTEL_EXPORTER_OTLP_TRACES_HEADERS: `Authorization=Basic ${langfuseOtelAuth}`,
@@ -58,7 +55,6 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   const envLines = [
     `MISTRAL_API_KEY=${MISTRAL_API_KEY}`,
     `LISTENNOTES_API_KEY=${LISTENNOTES_API_KEY}`,
-    `AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}`,
     ...(langfuseOtelAuth ? [
       `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://cloud.langfuse.com/api/public/otel/v1/traces`,
       `OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Basic ${langfuseOtelAuth}`,
