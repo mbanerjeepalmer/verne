@@ -8,3 +8,8 @@ But we're not getting that from the Mistral Vibe agent. There are a couple of re
 
 
 Note that transcription is likely to take some time. Therefore we'll want the agent to post the episodes basically immediately, transcribe them then post them again, including diarised transcripts and highlights.
+
+
+Implementation:
+- This will need to be a CLI. So follow the example of the listennotes CLI.
+- Therefore it will need to be packaged by `sandbox.ts`.
