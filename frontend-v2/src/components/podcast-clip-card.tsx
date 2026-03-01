@@ -47,6 +47,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
   const isScrubbing = React.useRef(false)
   const scrubTarget = React.useRef(start_time)
   const { play: globalPlay, pause: globalPause } = useAudioPlayer()
+  const meta = React.useMemo(() => ({ name, coverImage: cover_image, duration: fullSec }), [name, cover_image, fullSec])
 
   // Unique ID for this clip (src + start/end to distinguish clips from same episode)
   const clipId = `${src}#${start_time}-${end_time}`
@@ -115,7 +116,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
       audio.pause()
       globalPause(clipId)
     } else {
-      globalPlay(clipId, audio)
+      globalPlay(clipId, audio, meta)
       setIsLoading(true)
       try {
         await audio.play()
@@ -139,7 +140,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
     isScrubbing.current = false
     if (audioRef.current) {
       audioRef.current.currentTime = scrubTarget.current
-      globalPlay(clipId, audioRef.current)
+      globalPlay(clipId, audioRef.current, meta)
       audioRef.current.play().catch(() => {})
     }
   }
@@ -149,7 +150,7 @@ export function PodcastClipCard({ podcast }: PodcastClipCardProps) {
     if (audioRef.current) {
       audioRef.current.currentTime = start_time
       setCurrentTime(start_time)
-      globalPlay(clipId, audioRef.current)
+      globalPlay(clipId, audioRef.current, meta)
       audioRef.current.play().catch(() => {})
     }
   }

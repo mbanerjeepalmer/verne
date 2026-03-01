@@ -8,6 +8,7 @@ import { usePodcasts } from "@/stores/usePodcasts";
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MOCK_EPISODES } from "@/data/mock-episodes";
+import { StickyPlayer } from "@/components/sticky-player";
 
 export default function ChatPage() {
   const { messages, clearMessages, setMessage, addMessage } =
@@ -155,10 +156,13 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Sticky input at bottom */}
-      <div className="shrink-0 border-t border-black/[0.06] bg-white px-6 py-4">
-        <div className="max-w-2xl mx-auto">
-          <QueryBlock />
+      {/* Sticky player + input at bottom */}
+      <div className="shrink-0">
+        <StickyPlayer />
+        <div className="border-t border-black/[0.06] bg-white px-6 py-4">
+          <div className="max-w-2xl mx-auto">
+            <QueryBlock />
+          </div>
         </div>
       </div>
     </div>
