@@ -7,10 +7,10 @@ Use the `podcast-search` CLI tool that is available in your environment. The `LI
 ### Basic usage
 
 ```bash
-podcast-search "<query>" --output compact --limit 3
+podcast-search "<query>" --type episode --output compact --limit 3
 ```
 
-Always use `--output compact` and `--limit 3`. Never omit these flags.
+Always use `--type episode`, `--output compact`, and `--limit 3`. Never omit these flags. You must search for episodes (not podcasts) so you get results with audio URLs that you can post to the user's feed.
 
 ### Useful options
 
