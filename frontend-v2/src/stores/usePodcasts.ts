@@ -4,6 +4,7 @@ import { create } from "zustand";
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  type?: "reasoning" | "tool_call" | "tool_result" | "assistant" | "error";
 }
 
 interface PodcastsState {

@@ -31,15 +31,30 @@ const Websocket = () => {
 
       console.log("🎉 Websocket event received: ", data);
 
-      if (eventType === "message") {
-        setMessage(payload.message);
-        addMessage({ role: "assistant", content: payload.message });
+      if (eventType === "reasoning") {
+        addMessage({ role: "assistant", content: payload.content, type: "reasoning" });
+      } else if (eventType === "tool_call") {
+        const toolLabel = payload.tool_name ?? "tool";
+        addMessage({ role: "assistant", content: `Using ${toolLabel}…`, type: "tool_call" });
+      } else if (eventType === "tool_result") {
+        const content = payload.error
+          ? `Error: ${payload.error}`
+          : payload.result ?? "Done";
+        addMessage({ role: "assistant", content, type: "tool_result" });
+      } else if (eventType === "assistant") {
+        setMessage(payload.content);
+        addMessage({ role: "assistant", content: payload.content });
       } else if (eventType === "episodes") {
         setMessage(payload.message);
         addMessage({ role: "assistant", content: payload.message });
         if (payload.podcasts && Array.isArray(payload.podcasts)) {
           setPodcasts(payload.podcasts);
         }
+      } else if (eventType === "error") {
+        addMessage({ role: "assistant", content: payload.content ?? "Something went wrong.", type: "error" });
+      } else if (eventType === "message") {
+        setMessage(payload.message);
+        addMessage({ role: "assistant", content: payload.message });
       }
     };
 

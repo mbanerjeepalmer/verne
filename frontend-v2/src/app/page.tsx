@@ -166,18 +166,67 @@ export default function LandingPage() {
         >
           {messages.length > 0 && (
             <div className="mb-4 flex flex-col gap-3">
-              {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`p-3 rounded-lg text-[15px] leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-black text-white self-end max-w-[85%] ml-auto"
-                      : "bg-black/[0.04] text-black/70 self-start max-w-[85%]"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              ))}
+              {messages.map((msg, i) => {
+                if (msg.role === "user") {
+                  return (
+                    <div
+                      key={i}
+                      className="p-3 rounded-lg text-[15px] leading-relaxed bg-black text-white self-end max-w-[85%] ml-auto"
+                    >
+                      {msg.content}
+                    </div>
+                  );
+                }
+
+                if (msg.type === "reasoning") {
+                  return (
+                    <div
+                      key={i}
+                      data-msg-type="reasoning"
+                      className="px-3 py-1.5 text-[13px] leading-relaxed text-black/35 italic self-start max-w-[85%]"
+                    >
+                      {msg.content}
+                    </div>
+                  );
+                }
+
+                if (msg.type === "tool_call" || msg.type === "tool_result") {
+                  return (
+                    <details
+                      key={i}
+                      data-msg-type={msg.type}
+                      className="px-3 py-1 text-[12px] font-mono text-black/30 self-start max-w-[85%]"
+                    >
+                      <summary className="cursor-pointer truncate">
+                        {msg.content}
+                      </summary>
+                      <pre className="mt-1 whitespace-pre-wrap break-words max-h-60 overflow-y-auto text-black/40">
+                        {msg.content}
+                      </pre>
+                    </details>
+                  );
+                }
+
+                if (msg.type === "error") {
+                  return (
+                    <div
+                      key={i}
+                      className="p-3 rounded-lg text-[15px] leading-relaxed bg-red-50 text-red-600 self-start max-w-[85%]"
+                    >
+                      {msg.content}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={i}
+                    className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70 self-start max-w-[85%]"
+                  >
+                    {msg.content}
+                  </div>
+                );
+              })}
             </div>
           )}
           <QueryBlock />

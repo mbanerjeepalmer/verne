@@ -7,8 +7,10 @@ Use the `podcast-search` CLI tool that is available in your environment. The `LI
 ### Basic usage
 
 ```bash
-podcast-search "<query>"
+podcast-search "<query>" --output compact --limit 3
 ```
+
+Always use `--output compact` and `--limit 3`. Never omit these flags.
 
 ### Useful options
 
