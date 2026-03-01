@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Volume2, VolumeX } from "lucide-react";
 
 export default function ChatPage() {
-  const { messages, clearMessages, setMessage, addMessage, isVoiceMode, setVoiceMode } =
+  const { messages, clearMessages, setMessage, addMessage, isVoiceMode, setVoiceMode, isTTSPlaying } =
     usePodcasts();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -77,7 +77,9 @@ export default function ChatPage() {
               onClick={() => setVoiceMode(!isVoiceMode)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
                 isVoiceMode
-                  ? "bg-black text-white"
+                  ? isTTSPlaying
+                    ? "voice-glow-dark text-white"
+                    : "bg-black text-white"
                   : "text-black/40 hover:text-black/60"
               }`}
               title={isVoiceMode ? "Voice mode on — click to mute" : "Voice mode off — click to read responses aloud"}

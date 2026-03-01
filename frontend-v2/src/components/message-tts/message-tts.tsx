@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Volume2, VolumeX, Loader2 } from "lucide-react";
+import { usePodcasts } from "@/stores/usePodcasts";
 
 interface MessageTTSProps {
   text: string;
@@ -9,24 +10,28 @@ interface MessageTTSProps {
   voiceId?: string;
 }
 
-function MockWaveform({ active }: { active: boolean }) {
+function MockWaveform({ active, glowing }: { active: boolean; glowing: boolean }) {
+  const heights = [40, 65, 30, 80, 50, 90, 45, 70, 35, 60, 75, 40];
   return (
     <div className="flex items-center gap-[2px] h-3">
-      {Array.from({ length: 12 }).map((_, i) => {
-        const heights = [40, 65, 30, 80, 50, 90, 45, 70, 35, 60, 75, 40];
-        return (
-          <div
-            key={i}
-            className={`w-[2px] rounded-full transition-all duration-300 ${
-              active ? "bg-black/40 animate-pulse" : "bg-black/15"
-            }`}
-            style={{
-              height: `${heights[i]}%`,
-              animationDelay: active ? `${i * 80}ms` : undefined,
-            }}
-          />
-        );
-      })}
+      {heights.map((h, i) => (
+        <div
+          key={i}
+          className={`w-[2px] rounded-full transition-all duration-300 ${
+            active ? "bg-current animate-pulse" : "bg-black/15"
+          }`}
+          style={{
+            height: `${h}%`,
+            color: active ? undefined : undefined,
+            animation: glowing
+              ? `voice-bar-glow 1.2s ease-in-out ${i * 60}ms forwards`
+              : active
+                ? `pulse 1.5s ease-in-out ${i * 80}ms infinite`
+                : undefined,
+            backgroundColor: glowing ? "currentColor" : undefined,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -34,9 +39,11 @@ function MockWaveform({ active }: { active: boolean }) {
 export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isGlowing, setIsGlowing] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const hasAutoPlayedRef = useRef(false);
+  const { setVoiceMode, setTTSPlaying } = usePodcasts();
 
   const cleanup = useCallback(() => {
     if (audioRef.current) {
@@ -48,12 +55,14 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
       audioUrlRef.current = null;
     }
     setIsPlaying(false);
-  }, []);
+    setTTSPlaying(false);
+  }, [setTTSPlaying]);
 
   const play = useCallback(async () => {
     if (!text.trim()) return;
 
     setIsLoading(true);
+    setIsGlowing(false);
     try {
       const response = await fetch("/api/tts", {
         method: "POST",
@@ -73,21 +82,25 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
       audio.onerror = cleanup;
 
       setIsPlaying(true);
+      setTTSPlaying(true);
+      setIsGlowing(true);
       await audio.play();
     } catch {
       cleanup();
     } finally {
       setIsLoading(false);
     }
-  }, [text, voiceId, cleanup]);
+  }, [text, voiceId, cleanup, setTTSPlaying]);
 
   const toggle = useCallback(() => {
     if (isPlaying) {
       cleanup();
+      setVoiceMode(false);
     } else {
+      setVoiceMode(true);
       play();
     }
-  }, [isPlaying, cleanup, play]);
+  }, [isPlaying, cleanup, play, setVoiceMode]);
 
   // Auto-play on mount when in voice mode (once only)
   useEffect(() => {
@@ -111,11 +124,17 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
       {isLoading ? (
         <Loader2 className="size-3 text-black/25 animate-spin" />
       ) : isPlaying ? (
-        <VolumeX className="size-3 text-black/40" />
+        <VolumeX
+          className="size-3"
+          style={isGlowing ? {
+            color: "oklch(0.55 0.22 270)",
+            animation: "voice-bar-glow 1.2s ease-in-out forwards",
+          } : { color: "oklch(0 0 0 / 0.4)" }}
+        />
       ) : (
         <Volume2 className="size-3 text-black/20 group-hover:text-black/40 transition-colors" />
       )}
-      <MockWaveform active={isPlaying} />
+      <MockWaveform active={isPlaying} glowing={isGlowing} />
     </button>
   );
 }
