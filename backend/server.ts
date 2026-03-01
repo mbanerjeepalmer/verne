@@ -117,8 +117,14 @@ app.post("/query", async (c) => {
 
     return c.json({ success: true });
   } catch (err) {
-    const errorMessage =
+    let errorMessage =
       err instanceof Error ? err.message : "Unknown error occurred";
+
+    // Replace generic timeout with an actionable message
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      errorMessage = "The agent took too long to respond. Try a simpler or more specific query.";
+    }
+
     console.error("Query failed:", errorMessage);
 
     const broadcast = {
