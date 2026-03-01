@@ -78,6 +78,9 @@ export default function ChatPage() {
         </div>
       </nav>
 
+      {/* Sticky player (when player controls scroll out of view) */}
+      <StickyPlayer />
+
       {/* Scrollable messages + podcast cards */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="max-w-2xl mx-auto flex flex-col gap-3">
@@ -156,13 +159,9 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Sticky player + input at bottom */}
-      <div className="shrink-0">
-        <StickyPlayer />
-        <div className="border-t border-black/[0.06] bg-white px-6 py-4">
-          <div className="max-w-2xl mx-auto">
-            <QueryBlock />
-          </div>
+      <div className="shrink-0 border-t border-black/[0.06] bg-white px-6 py-4">
+        <div className="max-w-2xl mx-auto">
+          <QueryBlock />
         </div>
       </div>
     </div>

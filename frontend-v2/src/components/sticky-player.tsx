@@ -29,7 +29,6 @@ export function StickyPlayer() {
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
 
-    // Sync initial state
     setCurrentTime(audio.currentTime)
     setIsPlaying(!audio.paused)
 
@@ -58,13 +57,13 @@ export function StickyPlayer() {
 
   return (
     <div
-      className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+      className="shrink-0 grid transition-[grid-template-rows] duration-300 ease-in-out"
       style={{ gridTemplateRows: visible ? "1fr" : "0fr" }}
     >
       <div className="overflow-hidden">
-        <div className="relative border-t border-black/[0.06] bg-white/95 backdrop-blur-sm px-6 py-2">
-          {/* Thin progress bar at top edge */}
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-100">
+        <div className="relative border-b border-black/[0.06] bg-white/95 backdrop-blur-sm px-6 py-2">
+          {/* Thin progress bar at bottom edge */}
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-100">
             <div
               className="h-full bg-slate-800 transition-[width] duration-300"
               style={{ width: `${progress}%` }}
@@ -72,7 +71,6 @@ export function StickyPlayer() {
           </div>
 
           <div className="max-w-2xl mx-auto flex items-center gap-3">
-            {/* Cover image */}
             {activeMeta && (
               <img
                 src={activeMeta.coverImage}
@@ -81,20 +79,18 @@ export function StickyPlayer() {
               />
             )}
 
-            {/* Play/Pause */}
             <button
               onClick={togglePlay}
-              className="shrink-0 p-1.5 rounded-full bg-slate-900 text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-slate-900 text-white hover:bg-slate-700 transition-colors cursor-pointer"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? (
                 <Pause className="w-3.5 h-3.5" fill="currentColor" />
               ) : (
-                <Play className="w-3.5 h-3.5 ml-0.5" fill="currentColor" />
+                <Play className="w-3.5 h-3.5 translate-x-[1px]" fill="currentColor" />
               )}
             </button>
 
-            {/* Title + time */}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-900 truncate">
                 {activeMeta?.name}
