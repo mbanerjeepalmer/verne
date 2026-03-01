@@ -45,8 +45,8 @@ const Websocket = () => {
         setMessage(payload.content);
         addMessage({ role: "assistant", content: payload.content });
       } else if (eventType === "episodes") {
-        setMessage(payload.message);
-        addMessage({ role: "assistant", content: payload.message });
+        // Don't addMessage here — the assistant message was already added
+        // by the preceding "assistant" event. Just update podcasts.
         if (payload.podcasts && Array.isArray(payload.podcasts)) {
           setPodcasts(payload.podcasts);
         }
