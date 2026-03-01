@@ -3,12 +3,9 @@
 import { motion } from "framer-motion";
 import VerneLogo from "@/components/icons/verne-logo";
 import { BarVisualizer } from "@/components/ui/bar-visualizer";
-import { FullPodcastCard } from "@/components/full-podcast-card";
 import QueryBlock from "@/components/query-block/query-block";
-import Websocket from "@/components/websocket/websocket";
-import { usePodcasts } from "@/stores/usePodcasts";
 import { Mic, Search, Headphones, Zap } from "lucide-react";
-import Spacer from "@/components/spacer/spacer";
+import { useRouter } from "next/navigation";
 
 
 const fadeUp = {
@@ -56,18 +53,7 @@ const features = [
 ];
 
 export default function LandingPage() {
-  const { podcasts, message, messages, clearMessages, clearPodcasts, setMessage } = usePodcasts();
-
-  const handleNewConversation = async () => {
-    try {
-      await fetch("/api/sandbox/restart", { method: "POST" });
-    } catch (err) {
-      console.error("Failed to restart sandbox:", err);
-    }
-    clearMessages();
-    clearPodcasts();
-    setMessage(null);
-  };
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white">
@@ -86,14 +72,6 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-4">
-            {messages.length > 0 && (
-              <button
-                onClick={handleNewConversation}
-                className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
-              >
-                New conversation
-              </button>
-            )}
             <button
               onClick={() =>
                 document
@@ -151,9 +129,8 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* Chat Interface */}
+      {/* Query Input */}
       <section className="px-6 pb-16">
-        <Websocket />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,79 +141,10 @@ export default function LandingPage() {
           }}
           className="max-w-2xl mx-auto"
         >
-          {messages.length > 0 && (
-            <div className="mb-4 flex flex-col gap-3">
-              {messages.map((msg, i) => {
-                if (msg.role === "user") {
-                  return (
-                    <div
-                      key={i}
-                      className="p-3 rounded-lg text-[15px] leading-relaxed bg-black text-white self-end max-w-[85%] ml-auto"
-                    >
-                      {msg.content}
-                    </div>
-                  );
-                }
-
-                if (msg.type === "reasoning") {
-                  return (
-                    <div
-                      key={i}
-                      data-msg-type="reasoning"
-                      className="px-3 py-1.5 text-[13px] leading-relaxed text-black/35 italic self-start max-w-[85%]"
-                    >
-                      {msg.content}
-                    </div>
-                  );
-                }
-
-                if (msg.type === "tool_call" || msg.type === "tool_result") {
-                  return (
-                    <details
-                      key={i}
-                      data-msg-type={msg.type}
-                      className="px-3 py-1 text-[12px] font-mono text-black/30 self-start max-w-[85%]"
-                    >
-                      <summary className="cursor-pointer truncate">
-                        {msg.content}
-                      </summary>
-                      <pre className="mt-1 whitespace-pre-wrap break-words max-h-60 overflow-y-auto text-black/40">
-                        {msg.content}
-                      </pre>
-                    </details>
-                  );
-                }
-
-                if (msg.type === "error") {
-                  return (
-                    <div
-                      key={i}
-                      className="p-3 rounded-lg text-[15px] leading-relaxed bg-red-50 text-red-600 self-start max-w-[85%]"
-                    >
-                      {msg.content}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    key={i}
-                    className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70 self-start max-w-[85%]"
-                  >
-                    {msg.content}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <QueryBlock />
-          {podcasts.length > 0 && (
-            <div className="mt-6 flex flex-col gap-4">
-              {podcasts.map((podcast, index) => (
-                <FullPodcastCard key={index} podcast={podcast} />
-              ))}
-            </div>
-          )}
+          <QueryBlock
+            navigateOnly
+            onSubmit={(query) => router.push(`/app?q=${encodeURIComponent(query)}`)}
+          />
         </motion.div>
       </section>
 

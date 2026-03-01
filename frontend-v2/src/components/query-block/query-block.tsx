@@ -8,10 +8,13 @@ import { usePodcasts } from "@/stores/usePodcasts";
 
 interface QueryBlockProps {
   onSubmit?: (text: string) => void;
+  /** If true, only calls onSubmit — skips the API call and message store */
+  navigateOnly?: boolean;
 }
 
 const QueryBlock = ({
   onSubmit,
+  navigateOnly,
 }: QueryBlockProps) => {
   const [text, setText] = useState("");
   const partialTextRef = useRef("");
@@ -47,8 +50,15 @@ const QueryBlock = ({
   const handleSubmit = useCallback(async () => {
     if (text.trim()) {
       const query = text.trim();
-      onSubmit?.(query);
+      setText("");
+
+      if (navigateOnly) {
+        onSubmit?.(query);
+        return;
+      }
+
       addMessage({ role: "user", content: query });
+      onSubmit?.(query);
 
       try {
         const response = await fetch("/api/query", {
@@ -56,7 +66,7 @@ const QueryBlock = ({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ query: text.trim() }),
+          body: JSON.stringify({ query }),
         });
 
         if (!response.ok) {
@@ -65,13 +75,11 @@ const QueryBlock = ({
 
         const data = await response.json();
         console.log("Query submitted successfully:", data);
-
-        setText("");
       } catch (error) {
         console.error("Error submitting query:", error);
       }
     }
-  }, [text, onSubmit]);
+  }, [text, onSubmit, navigateOnly]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -82,6 +90,15 @@ const QueryBlock = ({
 
   return (
     <div className="w-full flex flex-col rounded-lg border border-border p-3">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Enter your query or use voice input..."
+        className="w-full min-h-20 resize-none bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
+        rows={3}
+      />
+      <Spacer size="small" />
       <div className="flex justify-between items-center">
         <SpeechInput
           onTranscript={handleTranscript}
@@ -95,15 +112,6 @@ const QueryBlock = ({
           <ArrowUpRight className="size-4" />
         </button>
       </div>
-      <Spacer size="small" />
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Enter your query or use voice input..."
-        className="w-full min-h-20 resize-none bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
-        rows={3}
-      />
     </div>
   );
 };
