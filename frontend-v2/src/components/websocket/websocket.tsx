@@ -5,7 +5,7 @@ import { IPodcast } from "@/types/podcast";
 import { useEffect, useRef } from "react";
 
 const Websocket = () => {
-  const { addPodcast, setPodcasts, setMessage } = usePodcasts();
+  const { addPodcast, setPodcasts, setMessage, addMessage } = usePodcasts();
 
   const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
   if (!wsUrl) {
@@ -33,8 +33,10 @@ const Websocket = () => {
 
       if (eventType === "message") {
         setMessage(payload.message);
+        addMessage({ role: "assistant", content: payload.message });
       } else if (eventType === "episodes") {
         setMessage(payload.message);
+        addMessage({ role: "assistant", content: payload.message });
         if (payload.podcasts && Array.isArray(payload.podcasts)) {
           setPodcasts(payload.podcasts);
         }
@@ -47,7 +49,7 @@ const Websocket = () => {
       if (!socket.current) return;
       socket.current.close();
     };
-  }, [addPodcast, setPodcasts, setMessage]);
+  }, [addPodcast, setPodcasts, setMessage, addMessage]);
 
   return <></>;
 };

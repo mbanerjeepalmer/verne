@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import Bun from "bun";
 import type { IPodcast } from "./types";
-import { sendQuery } from "./sandbox";
+import { sendQuery, initSandbox, getSandboxStatus, killSandbox } from "./sandbox";
 import { handleTranscriptionWebSocket } from "./transcription";
 
 type Env = {
@@ -15,6 +15,7 @@ const app = new Hono<Env>();
 const clients = new Set<any>();
 const transcriptionClients = new Map<any, (message: string | Buffer) => Promise<void>>();
 let submissionCount = 0;
+let currentSessionId: string | null = null;
 
 // Enable CORS for all routes
 app.use("*", cors());
@@ -54,13 +55,33 @@ app.post("/broadcast", async (c) => {
   return c.json({ message: broadcast });
 });
 
+app.get("/sandbox/status", (c) => {
+  return c.json(getSandboxStatus());
+});
+
+app.post("/sandbox/restart", async (c) => {
+  console.log("Restarting sandbox...");
+  await killSandbox();
+  currentSessionId = null;
+  // Eagerly create a new sandbox
+  initSandbox()
+    .then((url) => console.log(`New sandbox ready: ${url}`))
+    .catch((err) => console.error("Sandbox restart failed:", err));
+  return c.json({ success: true, message: "Sandbox restarting" });
+});
+
 app.post("/query", async (c) => {
   const body = await c.req.json<{ query: string }>();
 
   console.log(`Received query:`, body.query);
 
   try {
-    const result = await sendQuery(body.query);
+    const result = await sendQuery(body.query, currentSessionId ?? undefined);
+
+    // Track session for conversation continuity
+    if (result.session_id) {
+      currentSessionId = result.session_id;
+    }
 
     console.log("Sandbox response:", JSON.stringify(result, null, 2));
 
@@ -164,3 +185,9 @@ Bun.serve({
     },
   },
 });
+
+// Eagerly warm the sandbox at server start
+console.log("Server started on port 3001 — warming sandbox...");
+initSandbox()
+  .then((url) => console.log(`Sandbox ready: ${url}`))
+  .catch((err) => console.error("Sandbox warm-up failed:", err));
