@@ -76,6 +76,13 @@ app.post("/query", async (c) => {
   console.log(`Received query:`, body.query);
 
   try {
+    // Immediate feedback before sandbox responds
+    const thinking = JSON.stringify({
+      event_type: "reasoning",
+      payload: { type: "reasoning", content: "Thinking…" },
+    });
+    clients.forEach((ws) => ws.send(thinking));
+
     const episodes: Record<string, any>[] = [];
     let lastMessage = "No response from agent.";
 
