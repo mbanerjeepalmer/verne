@@ -1,4 +1,4 @@
-import { xelevenlabs } from "@/services/services";
+import { getElevenLabs } from "@/services/services";
 import { NextRequest, NextResponse } from "next/server";
 
 const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
-    const audio = await xelevenlabs.textToSpeech.convert(voiceId, {
+    const audio = await getElevenLabs().textToSpeech.convert(voiceId, {
       text,
       modelId: "eleven_multilingual_v2",
       outputFormat: "mp3_44100_128",
@@ -35,10 +35,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error generating speech:", error);
-    return NextResponse.json(
-      { error: "Failed to generate speech" },
-      { status: 500 },
-    );
+    const message = error instanceof Error ? error.message : "Failed to generate speech";
+    console.error("Error generating speech:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 export async function POST() {
   try {
-    const response = await fetch("http://localhost:3001/sandbox/restart", {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const response = await fetch(`${backendUrl}/sandbox/restart`, {
       method: "POST",
     });
 

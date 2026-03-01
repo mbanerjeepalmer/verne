@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the query to the Hono backend
-    const response = await fetch("http://localhost:3001/query", {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const response = await fetch(`${backendUrl}/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

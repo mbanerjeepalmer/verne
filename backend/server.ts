@@ -139,8 +139,10 @@ app.post("/query", async (c) => {
   }
 });
 
+const port = process.env.PORT || 3001;
+
 Bun.serve({
-  port: 3001,
+  port,
 
   fetch(req, server) {
     return app.fetch(req, { server });
@@ -204,7 +206,7 @@ Bun.serve({
 });
 
 // Eagerly warm the sandbox at server start
-console.log("Server started on port 3001 — warming sandbox...");
+console.log(`Server started on port ${port} — warming sandbox...`);
 initSandbox()
   .then((url) => console.log(`Sandbox ready: ${url}`))
   .catch((err) => console.error("Sandbox warm-up failed:", err));
