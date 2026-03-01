@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import Bun from "bun";
 import type { IPodcast } from "./types";
-import { sendQuery, initSandbox, getSandboxStatus, killSandbox } from "./sandbox";
+import { sendQueryStream, initSandbox, getSandboxStatus, killSandbox } from "./sandbox";
 import { handleTranscriptionWebSocket } from "./transcription";
 
 type Env = {
@@ -76,61 +76,57 @@ app.post("/query", async (c) => {
   console.log(`Received query:`, body.query);
 
   try {
-    const result = await sendQuery(body.query, currentSessionId ?? undefined);
+    const episodes: Record<string, any>[] = [];
+    let lastMessage = "No response from agent.";
 
-    // Track session for conversation continuity
+    const result = await sendQueryStream(
+      body.query,
+      (event) => {
+        // Collect post_episode tool calls for final broadcast
+        if (event.type === "tool_call" && event.tool_name === "post_episode") {
+          episodes.push(event.args ?? {});
+          return;
+        }
+
+        // Track last assistant message
+        if (event.type === "assistant" && event.content) {
+          lastMessage = event.content;
+        }
+
+        // Stream each event to WebSocket clients in real-time
+        const broadcast = { event_type: event.type, payload: event };
+        const msg = JSON.stringify(broadcast);
+        clients.forEach((ws) => ws.send(msg));
+      },
+      currentSessionId ?? undefined
+    );
+
     if (result.session_id) {
       currentSessionId = result.session_id;
     }
 
-    console.log("Sandbox response:", JSON.stringify(result, null, 2));
+    // Broadcast episodes at the end if any were collected
+    if (episodes.length > 0) {
+      const broadcast = {
+        event_type: "episodes",
+        payload: { message: lastMessage, podcasts: episodes },
+      };
+      const msg = JSON.stringify(broadcast);
+      clients.forEach((ws) => ws.send(msg));
+    }
 
-    // Extract episodes from post_episode tool calls
-    const episodes = result.events
-      .filter((e) => e.type === "tool_call" && e.tool_name === "post_episode")
-      .map((e) => e.args);
-
-    // Extract the last assistant message
-    const assistantEvents = result.events.filter((e) => e.type === "assistant");
-    const lastMessage =
-      assistantEvents.at(-1)?.content ?? "No response from agent.";
-
-    const broadcast =
-      episodes.length > 0
-        ? {
-            event_type: "episodes",
-            payload: {
-              message: lastMessage,
-              podcasts: episodes,
-            },
-          }
-        : {
-            event_type: "message",
-            payload: {
-              message: lastMessage,
-            },
-          };
-
-    clients.forEach((ws) => {
-      ws.send(JSON.stringify(broadcast));
-    });
-
-    return c.json({ success: true, response: broadcast });
+    return c.json({ success: true });
   } catch (err) {
     const errorMessage =
       err instanceof Error ? err.message : "Unknown error occurred";
     console.error("Query failed:", errorMessage);
 
     const broadcast = {
-      event_type: "message",
-      payload: {
-        message: `Error: ${errorMessage}`,
-      },
+      event_type: "error",
+      payload: { content: errorMessage },
     };
-
-    clients.forEach((ws) => {
-      ws.send(JSON.stringify(broadcast));
-    });
+    const msg = JSON.stringify(broadcast);
+    clients.forEach((ws) => ws.send(msg));
 
     return c.json({ success: false, error: errorMessage }, 500);
   }
