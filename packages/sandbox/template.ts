@@ -14,5 +14,5 @@ export const vibeTemplate = Template()
   .copy("server.py", "/home/user/server.py")
   .setStartCmd(
     "cd /home/user && python -m uvicorn server:app --host 0.0.0.0 --port 8000",
-    waitForPort(8000)
+    waitForPort(8000),
   );
