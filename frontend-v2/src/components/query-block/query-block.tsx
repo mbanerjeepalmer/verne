@@ -19,12 +19,12 @@ const QueryBlock = ({
   const [text, setText] = useState("");
   const partialTextRef = useRef("");
   const baseTextRef = useRef("");
-  const usedVoiceRef = useRef(false);
   const { addMessage, setVoiceMode } = usePodcasts();
 
   // Handle real-time transcription (text deltas and final)
+  // Auto-enable voice mode when user starts speaking
   const handleTranscript = useCallback((transcriptText: string, isFinal: boolean) => {
-    usedVoiceRef.current = true;
+    setVoiceMode(true);
     if (isFinal) {
       // Final transcription - replace partial with final text
       const base = baseTextRef.current;
@@ -52,10 +52,7 @@ const QueryBlock = ({
   const handleSubmit = useCallback(async () => {
     if (text.trim()) {
       const query = text.trim();
-      const wasVoice = usedVoiceRef.current;
       setText("");
-      usedVoiceRef.current = false;
-      setVoiceMode(wasVoice);
 
       if (navigateOnly) {
         onSubmit?.(query);
@@ -84,7 +81,7 @@ const QueryBlock = ({
         console.error("Error submitting query:", error);
       }
     }
-  }, [text, onSubmit, navigateOnly, addMessage, setVoiceMode]);
+  }, [text, onSubmit, navigateOnly, addMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -97,10 +94,7 @@ const QueryBlock = ({
     <div className="w-full flex flex-col rounded-lg border border-border p-3">
       <textarea
         value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          usedVoiceRef.current = false;
-        }}
+        onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Enter your query or use voice input..."
         className="w-full min-h-20 resize-none bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"

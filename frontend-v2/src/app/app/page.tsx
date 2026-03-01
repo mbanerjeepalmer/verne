@@ -8,9 +8,10 @@ import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
 import { useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Volume2, VolumeX } from "lucide-react";
 
 export default function ChatPage() {
-  const { messages, clearMessages, setMessage, addMessage, isVoiceMode } =
+  const { messages, clearMessages, setMessage, addMessage, isVoiceMode, setVoiceMode } =
     usePodcasts();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -71,12 +72,26 @@ export default function ChatPage() {
               Verne
             </span>
           </div>
-          <button
-            onClick={handleNewConversation}
-            className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
-          >
-            New conversation
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setVoiceMode(!isVoiceMode)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium transition-all cursor-pointer ${
+                isVoiceMode
+                  ? "bg-black text-white"
+                  : "text-black/40 hover:text-black/60"
+              }`}
+              title={isVoiceMode ? "Voice mode on — click to mute" : "Voice mode off — click to read responses aloud"}
+            >
+              {isVoiceMode ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+              <span>Voice</span>
+            </button>
+            <button
+              onClick={handleNewConversation}
+              className="text-[13px] font-medium text-black/50 hover:text-black transition-colors cursor-pointer"
+            >
+              New conversation
+            </button>
+          </div>
         </div>
       </nav>
 
