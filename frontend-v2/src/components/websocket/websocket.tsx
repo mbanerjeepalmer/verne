@@ -45,7 +45,7 @@ const Websocket = () => {
         addMessage({ role: "assistant", content: payload.content });
       } else if (eventType === "episodes") {
         if (payload.podcasts && Array.isArray(payload.podcasts)) {
-          addMessage({ role: "assistant", content: "", type: "episodes", podcasts: payload.podcasts });
+          addMessage({ role: "assistant", content: "", type: "episodes", episodes: payload.podcasts });
         }
       } else if (eventType === "error") {
         addMessage({ role: "assistant", content: payload.content ?? "Something went wrong.", type: "error" });

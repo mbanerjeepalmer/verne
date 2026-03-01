@@ -5,7 +5,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   type?: "reasoning" | "tool_call" | "tool_result" | "assistant" | "error" | "episodes";
-  podcasts?: IPodcast[];
+  episodes?: IPodcast[];
 }
 
 interface PodcastsState {
