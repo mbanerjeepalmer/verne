@@ -3,11 +3,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Volume2, VolumeX, Loader2 } from "lucide-react";
 import { usePodcasts } from "@/stores/usePodcasts";
+import { useAudioPlayer } from "@/stores/useAudioPlayer";
 
 interface MessageTTSProps {
   text: string;
   autoPlay?: boolean;
   voiceId?: string;
+  messageIndex: number;
+  onEnded?: () => void;
 }
 
 function MockWaveform({ active, glowing }: { active: boolean; glowing: boolean }) {
@@ -22,7 +25,6 @@ function MockWaveform({ active, glowing }: { active: boolean; glowing: boolean }
           }`}
           style={{
             height: `${h}%`,
-            color: active ? undefined : undefined,
             animation: glowing
               ? `voice-bar-glow 1.2s ease-in-out ${i * 60}ms forwards`
               : active
@@ -36,7 +38,7 @@ function MockWaveform({ active, glowing }: { active: boolean; glowing: boolean }
   );
 }
 
-export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
+export function MessageTTS({ text, autoPlay, voiceId, messageIndex, onEnded }: MessageTTSProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGlowing, setIsGlowing] = useState(false);
@@ -44,7 +46,9 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const hasAutoPlayedRef = useRef(false);
-  const { setVoiceMode, setTTSPlaying } = usePodcasts();
+  const { setVoiceMode } = usePodcasts();
+  const globalPlay = useAudioPlayer((s) => s.play);
+  const globalPause = useAudioPlayer((s) => s.pause);
 
   const cleanup = useCallback(() => {
     if (audioRef.current) {
@@ -56,8 +60,7 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
       audioUrlRef.current = null;
     }
     setIsPlaying(false);
-    setTTSPlaying(false);
-  }, [setTTSPlaying]);
+  }, []);
 
   const play = useCallback(async () => {
     if (!text.trim()) return;
@@ -83,11 +86,26 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
 
       const audio = new Audio(url);
       audioRef.current = audio;
-      audio.onended = cleanup;
-      audio.onerror = cleanup;
+      audio.onended = () => {
+        cleanup();
+        globalPause();
+        onEnded?.();
+      };
+      audio.onerror = () => {
+        cleanup();
+        globalPause();
+      };
+
+      // Register with unified audio player (pauses any playing episode)
+      const itemId = `tts-${messageIndex}`;
+      globalPlay({
+        id: itemId,
+        type: "tts",
+        audio,
+        meta: { name: "Reading response aloud", duration: 0 },
+      });
 
       setIsPlaying(true);
-      setTTSPlaying(true);
       setIsGlowing(true);
       await audio.play();
     } catch (e) {
@@ -96,17 +114,18 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [text, voiceId, cleanup, setTTSPlaying]);
+  }, [text, voiceId, cleanup, globalPlay, globalPause, messageIndex, onEnded]);
 
   const toggle = useCallback(() => {
     if (isPlaying) {
       cleanup();
+      globalPause();
       setVoiceMode(false);
     } else {
       setVoiceMode(true);
       play();
     }
-  }, [isPlaying, cleanup, play, setVoiceMode]);
+  }, [isPlaying, cleanup, play, setVoiceMode, globalPause]);
 
   // Auto-play on mount when in voice mode (once only)
   useEffect(() => {
@@ -118,6 +137,22 @@ export function MessageTTS({ text, autoPlay, voiceId }: MessageTTSProps) {
 
   // Cleanup on unmount
   useEffect(() => cleanup, [cleanup]);
+
+  // Listen for external pause (another item started playing)
+  useEffect(() => {
+    const unsub = useAudioPlayer.subscribe((state, prev) => {
+      const itemId = `tts-${messageIndex}`;
+      if (prev.activeItem?.id === itemId && state.activeItem?.id !== itemId) {
+        // We were active but something else took over — stop our audio
+        if (audioRef.current) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+          setIsGlowing(false);
+        }
+      }
+    });
+    return unsub;
+  }, [messageIndex]);
 
   if (!text.trim()) return null;
 

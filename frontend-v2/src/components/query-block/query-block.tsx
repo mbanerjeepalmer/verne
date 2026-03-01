@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
-import { SpeechInput } from "../speech-input/speech-input";
+import { SpeechInput, SpeechInputHandle } from "../speech-input/speech-input";
 import { ArrowUpRight } from "lucide-react";
 import Spacer from "../spacer/spacer";
 import { usePodcasts } from "@/stores/usePodcasts";
@@ -19,11 +19,19 @@ const QueryBlock = ({
   const [text, setText] = useState("");
   const partialTextRef = useRef("");
   const baseTextRef = useRef("");
+  const speechInputRef = useRef<SpeechInputHandle>(null);
+  const submittedRef = useRef(false);
   const { addMessage, setVoiceMode } = usePodcasts();
 
   // Handle real-time transcription (text deltas and final)
   // Auto-enable voice mode when user starts speaking
   const handleTranscript = useCallback((transcriptText: string, isFinal: boolean) => {
+    // After submit, ignore any trailing transcription callbacks
+    if (submittedRef.current) {
+      if (isFinal) submittedRef.current = false;
+      return;
+    }
+
     setVoiceMode(true);
     if (isFinal) {
       // Final transcription - replace partial with final text
@@ -52,7 +60,11 @@ const QueryBlock = ({
   const handleSubmit = useCallback(async () => {
     if (text.trim()) {
       const query = text.trim();
+      submittedRef.current = true;
+      speechInputRef.current?.stopRecording();
       setText("");
+      baseTextRef.current = "";
+      partialTextRef.current = "";
 
       if (navigateOnly) {
         onSubmit?.(query);
@@ -103,6 +115,7 @@ const QueryBlock = ({
       <Spacer size="small" />
       <div className="flex justify-between items-center">
         <SpeechInput
+          ref={speechInputRef}
           onTranscript={handleTranscript}
         />
         <button

@@ -1,24 +1,33 @@
 "use client";
 
 import VerneLogo from "@/components/icons/verne-logo";
-import { FullPodcastCard } from "@/components/full-podcast-card";
+import { FullPodcastCard, FullPodcastCardHandle } from "@/components/full-podcast-card";
 import { MessageTTS } from "@/components/message-tts/message-tts";
 import QueryBlock from "@/components/query-block/query-block";
 import Websocket from "@/components/websocket/websocket";
 import { usePodcasts } from "@/stores/usePodcasts";
-import { useEffect, useRef, useMemo } from "react";
+import { useAudioPlayer } from "@/stores/useAudioPlayer";
+import { useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MOCK_EPISODES } from "@/data/mock-episodes";
 import { StickyPlayer } from "@/components/sticky-player";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Loader2 } from "lucide-react";
+
+// Message types that should trigger auto-scroll
+const SCROLL_TYPES = new Set<string | undefined>([undefined, "assistant", "episodes", "error"]);
 
 export default function ChatPage() {
-  const { messages, clearMessages, setMessage, addMessage, isVoiceMode, setVoiceMode, isTTSPlaying } =
+  const { messages, clearMessages, setMessage, addMessage, isVoiceMode, setVoiceMode, isProcessing, setProcessing } =
     usePodcasts();
+  const activeItem = useAudioPlayer((s) => s.activeItem);
+  const isTTSPlaying = activeItem?.type === "tts";
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDevMode = searchParams.has("dev");
+
+  // Refs for sequential episode playback
+  const episodeRefsMap = useRef<Map<string, FullPodcastCardHandle>>(new Map());
 
   // Auto-submit query from URL param (coming from landing page)
   const initialQuerySubmitted = useRef(false);
@@ -34,6 +43,7 @@ export default function ChatPage() {
     initialQuerySubmitted.current = true;
 
     addMessage({ role: "user", content: q });
+    setProcessing(true);
     router.replace("/app", { scroll: false });
 
     fetch("/api/query", {
@@ -41,10 +51,19 @@ export default function ChatPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: q }),
     }).catch((error) => console.error("Error submitting initial query:", error));
-  }, [searchParams, addMessage, router, isDevMode]);
+  }, [searchParams, addMessage, router, isDevMode, setProcessing]);
 
+  // Smart scroll: only on meaningful messages
+  const prevMessageCountRef = useRef(messages.length);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > prevMessageCountRef.current) {
+      const latest = messages[messages.length - 1];
+      const shouldScroll = latest.role === "user" || SCROLL_TYPES.has(latest.type);
+      if (shouldScroll) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   const handleNewConversation = async () => {
@@ -68,6 +87,57 @@ export default function ChatPage() {
     }
     return -1;
   }, [messages]);
+
+  // Build a flat playlist of all playable items for sequential playback
+  const playableItems = useMemo(() => {
+    const items: { type: "tts" | "episode"; msgIdx: number; episodeIdx?: number }[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+      if (msg.role === "assistant" && (!msg.type || msg.type === "assistant") && msg.content.trim()) {
+        items.push({ type: "tts", msgIdx: i });
+      }
+      if (msg.type === "episodes" && msg.episodes) {
+        for (let j = 0; j < msg.episodes.length; j++) {
+          items.push({ type: "episode", msgIdx: i, episodeIdx: j });
+        }
+      }
+    }
+    return items;
+  }, [messages]);
+
+  // Find the latest episodes message for auto-play
+  const latestEpisodesIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === "episodes" && messages[i].episodes?.length) return i;
+    }
+    return -1;
+  }, [messages]);
+
+  const handleSubmit = useCallback(() => {
+    setProcessing(true);
+  }, [setProcessing]);
+
+  // Generate a unique key for an episode to use in the refs map
+  const episodeKey = (msgIdx: number, epIdx: number) => `${msgIdx}-${epIdx}`;
+
+  // Create onEnded handler for episodes that chains to the next playable item
+  const getEpisodeOnEnded = useCallback((msgIdx: number, epIdx: number) => {
+    return () => {
+      // Find current item in playlist
+      const key = episodeKey(msgIdx, epIdx);
+      const currentPlaylistIdx = playableItems.findIndex(
+        (item) => item.type === "episode" && item.msgIdx === msgIdx && item.episodeIdx === epIdx
+      );
+      if (currentPlaylistIdx < 0 || currentPlaylistIdx >= playableItems.length - 1) return;
+
+      const next = playableItems[currentPlaylistIdx + 1];
+      if (next.type === "episode" && next.episodeIdx !== undefined) {
+        const nextKey = episodeKey(next.msgIdx, next.episodeIdx);
+        episodeRefsMap.current.get(nextKey)?.play();
+      }
+      // TTS auto-chain is handled separately via MessageTTS onEnded
+    };
+  }, [playableItems]);
 
   return (
     <div className="h-screen flex flex-col bg-white text-black selection:bg-black selection:text-white">
@@ -118,7 +188,7 @@ export default function ChatPage() {
               return (
                 <div
                   key={i}
-                  className="p-3 rounded-lg text-[15px] leading-relaxed bg-black text-white self-end max-w-[85%] ml-auto"
+                  className="p-3 rounded-lg text-[15px] leading-relaxed font-medium text-black bg-black/[0.06]"
                 >
                   {msg.content}
                 </div>
@@ -130,7 +200,7 @@ export default function ChatPage() {
                 <div
                   key={i}
                   data-msg-type="reasoning"
-                  className="px-3 py-1.5 text-[13px] leading-relaxed text-black/35 italic self-start max-w-[85%]"
+                  className="px-3 py-1.5 text-[13px] leading-relaxed text-black/35 italic"
                 >
                   {msg.content}
                 </div>
@@ -142,7 +212,7 @@ export default function ChatPage() {
                 <details
                   key={i}
                   data-msg-type={msg.type}
-                  className="px-3 py-1 text-[12px] font-mono text-black/30 self-start max-w-[85%]"
+                  className="px-3 py-1 text-[12px] font-mono text-black/30"
                 >
                   <summary className="cursor-pointer truncate">
                     {msg.content}
@@ -155,11 +225,24 @@ export default function ChatPage() {
             }
 
             if (msg.type === "episodes" && msg.episodes) {
+              const isLatest = i === latestEpisodesIdx;
               return (
-                <div key={i} className="flex flex-col gap-4 self-start w-full">
-                  {msg.episodes.map((episode, j) => (
-                    <FullPodcastCard key={j} podcast={episode} />
-                  ))}
+                <div key={i} className="flex flex-col gap-4 w-full">
+                  {msg.episodes.map((episode, j) => {
+                    const key = episodeKey(i, j);
+                    return (
+                      <FullPodcastCard
+                        key={j}
+                        ref={(handle) => {
+                          if (handle) episodeRefsMap.current.set(key, handle);
+                          else episodeRefsMap.current.delete(key);
+                        }}
+                        podcast={episode}
+                        autoPlay={isLatest && j === 0}
+                        onEnded={getEpisodeOnEnded(i, j)}
+                      />
+                    );
+                  })}
                 </div>
               );
             }
@@ -168,7 +251,7 @@ export default function ChatPage() {
               return (
                 <div
                   key={i}
-                  className="p-3 rounded-lg text-[15px] leading-relaxed bg-red-50 text-red-600 self-start max-w-[85%]"
+                  className="p-3 rounded-lg text-[15px] leading-relaxed bg-red-50 text-red-600"
                 >
                   {msg.content}
                 </div>
@@ -178,7 +261,7 @@ export default function ChatPage() {
             return (
               <div
                 key={i}
-                className="self-start max-w-[85%]"
+                className="w-full"
               >
                 <div className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70">
                   {msg.content}
@@ -186,17 +269,27 @@ export default function ChatPage() {
                 <MessageTTS
                   text={msg.content}
                   autoPlay={isVoiceMode && i === lastAssistantIdx}
+                  messageIndex={i}
                 />
               </div>
             );
           })}
+
+          {/* Processing indicator */}
+          {isProcessing && (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Loader2 className="size-4 text-black/30 animate-spin" />
+              <span className="text-sm text-black/30">Thinking...</span>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
 
       <div className="shrink-0 border-t border-black/[0.06] bg-white px-6 py-4">
         <div className="max-w-2xl mx-auto">
-          <QueryBlock />
+          <QueryBlock onSubmit={handleSubmit} />
         </div>
       </div>
     </div>

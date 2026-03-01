@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { Mic } from "lucide-react";
 import { LiveWaveform } from "@/components/ui/live-waveform";
 
@@ -10,6 +10,10 @@ type AudioRecorderStatus =
   | "uploading"
   | "error"
   | "success";
+
+export interface SpeechInputHandle {
+  stopRecording: () => void;
+}
 
 interface AudioRecorderProps {
   onTranscript?: (text: string, isFinal: boolean) => void;
@@ -28,10 +32,10 @@ function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
   return int16Array;
 }
 
-export function SpeechInput({
+export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(function SpeechInput({
   onTranscript,
   onError,
-}: AudioRecorderProps) {
+}, ref) {
   const [status, setStatus] = useState<AudioRecorderStatus>("idle");
   const [recordingTime, setRecordingTime] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
@@ -173,6 +177,8 @@ export function SpeechInput({
     }
   }, [stopTimer]);
 
+  useImperativeHandle(ref, () => ({ stopRecording }), [stopRecording]);
+
   // handleClick - handles the click event for the microphone button
   const handleClick = () => {
     if (status === "recording") {
@@ -224,4 +230,4 @@ export function SpeechInput({
       )}
     </div>
   );
-}
+});

@@ -3,8 +3,10 @@
 import { usePodcasts } from "@/stores/usePodcasts";
 import { useEffect, useRef } from "react";
 
+const MAX_RECONNECT_DELAY = 10000;
+
 const Websocket = () => {
-  const { setMessage, addMessage } = usePodcasts();
+  const { setMessage, addMessage, setProcessing } = usePodcasts();
 
   const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
   if (!wsUrl) {
@@ -15,53 +17,82 @@ const Websocket = () => {
   const endpoint = wsUrl + "/ws";
 
   const socket = useRef<WebSocket | null>(null);
+  const reconnectDelay = useRef(1000);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unmounted = useRef(false);
 
   useEffect(() => {
-    socket.current = new WebSocket(endpoint);
+    unmounted.current = false;
 
-    socket.current.onopen = () => {
-      console.log("🎉 Websocket connected");
-    };
+    function connect() {
+      if (unmounted.current) return;
 
-    socket.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const eventType = data.event_type;
-      const payload = data.payload;
+      socket.current = new WebSocket(endpoint);
 
-      console.log("🎉 Websocket event received: ", data);
+      socket.current.onopen = () => {
+        console.log("Websocket connected");
+        reconnectDelay.current = 1000; // Reset backoff on success
+      };
 
-      if (eventType === "reasoning") {
-        addMessage({ role: "assistant", content: payload.content, type: "reasoning" });
-      } else if (eventType === "tool_call") {
-        const toolLabel = payload.tool_name ?? "tool";
-        addMessage({ role: "assistant", content: `Using ${toolLabel}…`, type: "tool_call" });
-      } else if (eventType === "tool_result") {
-        const content = payload.error
-          ? `Error: ${payload.error}`
-          : payload.result ?? "Done";
-        addMessage({ role: "assistant", content, type: "tool_result" });
-      } else if (eventType === "assistant") {
-        setMessage(payload.content);
-        addMessage({ role: "assistant", content: payload.content });
-      } else if (eventType === "episodes") {
-        if (payload.podcasts && Array.isArray(payload.podcasts)) {
-          addMessage({ role: "assistant", content: "", type: "episodes", episodes: payload.podcasts });
+      socket.current.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const eventType = data.event_type;
+        const payload = data.payload;
+
+        console.log("Websocket event received: ", data);
+
+        if (eventType === "reasoning") {
+          addMessage({ role: "assistant", content: payload.content, type: "reasoning" });
+        } else if (eventType === "tool_call") {
+          const toolLabel = payload.tool_name ?? "tool";
+          addMessage({ role: "assistant", content: `Using ${toolLabel}…`, type: "tool_call" });
+        } else if (eventType === "tool_result") {
+          const content = payload.error
+            ? `Error: ${payload.error}`
+            : payload.result ?? "Done";
+          addMessage({ role: "assistant", content, type: "tool_result" });
+        } else if (eventType === "assistant") {
+          setMessage(payload.content);
+          addMessage({ role: "assistant", content: payload.content });
+          setProcessing(false);
+        } else if (eventType === "episodes") {
+          if (payload.podcasts && Array.isArray(payload.podcasts)) {
+            addMessage({ role: "assistant", content: "", type: "episodes", episodes: payload.podcasts });
+            setProcessing(false);
+          }
+        } else if (eventType === "error") {
+          addMessage({ role: "assistant", content: payload.content ?? "Something went wrong.", type: "error" });
+          setProcessing(false);
+        } else if (eventType === "message") {
+          setMessage(payload.message);
+          addMessage({ role: "assistant", content: payload.message });
+          setProcessing(false);
         }
-      } else if (eventType === "error") {
-        addMessage({ role: "assistant", content: payload.content ?? "Something went wrong.", type: "error" });
-      } else if (eventType === "message") {
-        setMessage(payload.message);
-        addMessage({ role: "assistant", content: payload.message });
-      }
-    };
+      };
 
-    socket.current.onclose = async () => {};
+      socket.current.onclose = () => {
+        console.log("Websocket closed, reconnecting in", reconnectDelay.current, "ms");
+        if (!unmounted.current) {
+          reconnectTimer.current = setTimeout(() => {
+            reconnectDelay.current = Math.min(reconnectDelay.current * 2, MAX_RECONNECT_DELAY);
+            connect();
+          }, reconnectDelay.current);
+        }
+      };
+
+      socket.current.onerror = () => {
+        // onclose will fire after this, triggering reconnect
+      };
+    }
+
+    connect();
 
     return () => {
-      if (!socket.current) return;
-      socket.current.close();
+      unmounted.current = true;
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      if (socket.current) socket.current.close();
     };
-  }, [setMessage, addMessage]);
+  }, [setMessage, addMessage, setProcessing]);
 
   return <></>;
 };

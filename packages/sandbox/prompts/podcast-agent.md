@@ -33,8 +33,13 @@ After searching, call the `post_episode` tool once per episode you want to recom
 | `image` or `thumbnail` | `cover_image`        |
 | `0`                 | `start_time`            |
 | `audio_length_sec`  | `end_time`              |
+| `description_original` | `description`         |
+| `pub_date_ms`       | `pub_date_ms`           |
+| `podcast_title`     | `podcast_title`         |
+| `publisher`         | `publisher`             |
+| `link`              | `link`                  |
 
-Always call `post_episode` for each result so episodes appear as playable cards in the user's feed.
+Always call `post_episode` for each result so episodes appear as playable cards in the user's feed. Always include the optional metadata fields when available.
 
 ## Your reply after posting episodes
 
