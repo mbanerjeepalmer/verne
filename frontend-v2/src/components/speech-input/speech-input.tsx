@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { Mic } from "lucide-react";
 import { LiveWaveform } from "@/components/ui/live-waveform";
+import { useAudioPlayer } from "@/stores/useAudioPlayer";
 
 type AudioRecorderStatus =
   | "idle"
@@ -81,6 +82,9 @@ export const SpeechInput = forwardRef<SpeechInputHandle, AudioRecorderProps>(fun
 
   // startRecording - captures PCM audio via Web Audio API and streams to backend
   const startRecording = useCallback(async () => {
+    // Pause any playing audio (TTS or episode) so the mic has the floor
+    useAudioPlayer.getState().pause();
+
     try {
       // Close any leftover WebSocket from a previous attempt
       if (wsRef.current) {

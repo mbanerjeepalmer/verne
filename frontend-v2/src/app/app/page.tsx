@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MOCK_EPISODES } from "@/data/mock-episodes";
 import { StickyPlayer } from "@/components/sticky-player";
 import { Volume2, VolumeX, Loader2 } from "lucide-react";
+import Markdown from "react-markdown";
 
 // Message types that should trigger auto-scroll
 const SCROLL_TYPES = new Set<string | undefined>([undefined, "assistant", "episodes", "error"]);
@@ -263,8 +264,8 @@ export default function ChatPage() {
                 key={i}
                 className="w-full"
               >
-                <div className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70">
-                  {msg.content}
+                <div className="p-3 rounded-lg text-[15px] leading-relaxed bg-black/[0.04] text-black/70 prose prose-sm prose-neutral max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
+                  <Markdown>{msg.content}</Markdown>
                 </div>
                 <MessageTTS
                   text={msg.content}

@@ -12,6 +12,12 @@ import {
 import type { IPodcast } from "@/types/podcast"
 import { useAudioPlayer } from "@/stores/useAudioPlayer"
 
+/** Strip HTML tags and decode common entities to plain text */
+function stripHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, "text/html")
+  return doc.body.textContent || ""
+}
+
 function formatSecondsToTime(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -318,7 +324,7 @@ export const FullPodcastCard = React.forwardRef<FullPodcastCardHandle, FullPodca
         {/* Description */}
         {description && (
           <p className="mx-4 mb-2 text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-            {description}
+            {stripHtml(description)}
           </p>
         )}
 
