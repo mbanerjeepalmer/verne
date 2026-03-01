@@ -28,7 +28,7 @@ interface FullPodcastCardProps {
 }
 
 export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
-  const { name, src, duration, cover_image, start_time } = podcast
+  const { name, src, duration, cover_image, start_time, highlights } = podcast
   const totalSeconds = duration || 1
 
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
@@ -124,6 +124,15 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
     isScrubbing.current = false
     if (audioRef.current) {
       audioRef.current.currentTime = scrubTarget.current
+      globalPlay(src, audioRef.current)
+      audioRef.current.play().catch(() => {})
+    }
+  }
+
+  const seekTo = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time
+      setCurrentTime(time)
       globalPlay(src, audioRef.current)
       audioRef.current.play().catch(() => {})
     }
@@ -229,6 +238,44 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
           </span>
         </div>
       </div>
+
+      {/* Highlights */}
+      {highlights && highlights.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-0.5">
+          {highlights.map((h, i) => {
+            const isActive = currentTime >= h.timestamp &&
+              (i === highlights.length - 1 || currentTime < highlights[i + 1].timestamp)
+            return (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); seekTo(h.timestamp) }}
+                className={`flex items-start gap-3 px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer ${
+                  isActive
+                    ? "bg-slate-100 dark:bg-slate-800"
+                    : "hover:bg-slate-50 dark:hover:bg-slate-900"
+                }`}
+              >
+                <span className={`text-xs font-mono tabular-nums shrink-0 mt-px ${
+                  isActive
+                    ? "text-slate-900 dark:text-slate-100 font-semibold"
+                    : "text-slate-400 dark:text-slate-500"
+                }`}>
+                  {formatSecondsToTime(h.timestamp)}
+                </span>
+                {h.text && (
+                  <span className={`text-sm leading-snug ${
+                    isActive
+                      ? "text-slate-900 dark:text-slate-100"
+                      : "text-slate-500 dark:text-slate-400"
+                  }`}>
+                    {h.text}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </Card>
   )
 }
