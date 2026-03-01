@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Card } from "@/components/ui/card"
-import { Play, Pause } from "lucide-react"
+import { Play, Pause, Loader2, Volume2, VolumeX } from "lucide-react"
 import {
   ScrubBarContainer,
   ScrubBarTrack,
@@ -27,35 +27,112 @@ interface FullPodcastCardProps {
 }
 
 export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
-  const { name, duration, cover_image, start_time } = podcast
+  const { name, src, duration, cover_image, start_time } = podcast
   const totalSeconds = duration || 1
 
+  const audioRef = React.useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = React.useState(false)
-  const [progress, setProgress] = React.useState((start_time / totalSeconds) * 100)
+  const [isLoading, setIsLoading] = React.useState(false)
+  const [currentTime, setCurrentTime] = React.useState(start_time || 0)
+  const [volume, setVolume] = React.useState(1)
+  const [isMuted, setIsMuted] = React.useState(false)
+  const [showVolume, setShowVolume] = React.useState(false)
+  const isScrubbing = React.useRef(false)
 
-  const currentSeconds = (progress / 100) * totalSeconds
-  const dynamicTimeString = formatSecondsToTime(currentSeconds)
+  // Create audio element once
+  React.useEffect(() => {
+    const audio = new Audio(src)
+    audio.preload = "metadata"
+    audio.volume = volume
+    if (start_time) audio.currentTime = start_time
+    audioRef.current = audio
+
+    const onTimeUpdate = () => {
+      if (!isScrubbing.current) {
+        setCurrentTime(audio.currentTime)
+      }
+    }
+    const onPlay = () => setIsPlaying(true)
+    const onPause = () => setIsPlaying(false)
+    const onWaiting = () => setIsLoading(true)
+    const onCanPlay = () => setIsLoading(false)
+    const onEnded = () => {
+      setIsPlaying(false)
+      setCurrentTime(0)
+    }
+
+    audio.addEventListener("timeupdate", onTimeUpdate)
+    audio.addEventListener("play", onPlay)
+    audio.addEventListener("pause", onPause)
+    audio.addEventListener("waiting", onWaiting)
+    audio.addEventListener("canplay", onCanPlay)
+    audio.addEventListener("ended", onEnded)
+
+    return () => {
+      audio.removeEventListener("timeupdate", onTimeUpdate)
+      audio.removeEventListener("play", onPlay)
+      audio.removeEventListener("pause", onPause)
+      audio.removeEventListener("waiting", onWaiting)
+      audio.removeEventListener("canplay", onCanPlay)
+      audio.removeEventListener("ended", onEnded)
+      audio.pause()
+      audio.src = ""
+    }
+  }, [src, start_time])
+
+  // Sync volume changes
+  React.useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume
+    }
+  }, [volume, isMuted])
+
+  const togglePlay = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const audio = audioRef.current
+    if (!audio) return
+
+    if (isPlaying) {
+      audio.pause()
+    } else {
+      setIsLoading(true)
+      try {
+        await audio.play()
+      } catch (err) {
+        console.error("Playback failed:", err)
+      }
+      setIsLoading(false)
+    }
+  }
 
   const handleScrub = (time: number) => {
-    setProgress((time / totalSeconds) * 100)
+    setCurrentTime(time)
   }
 
-  const handleScrubStart = () => {}
+  const handleScrubStart = () => {
+    isScrubbing.current = true
+  }
 
   const handleScrubEnd = () => {
-    setIsPlaying(true)
+    isScrubbing.current = false
+    if (audioRef.current) {
+      audioRef.current.currentTime = currentTime
+      audioRef.current.play().catch(() => {})
+    }
   }
 
-  const togglePlay = (e: React.MouseEvent) => {
+  const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setIsPlaying(!isPlaying)
+    setIsMuted(!isMuted)
   }
+
+  const dynamicTimeString = formatSecondsToTime(currentTime)
 
   return (
     <Card className="group relative overflow-hidden w-full max-w-2xl rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 py-3.5 hover:shadow-md hover:border-slate-400 dark:hover:border-slate-600 transition-all cursor-pointer duration-200 ease-in-out">
       {/* Main Content: Thumbnail and Title */}
       <div className="flex items-start gap-4">
-        <button 
+        <button
           className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-black/10 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
           onClick={togglePlay}
           aria-label={isPlaying ? "Pause podcast" : "Play podcast"}
@@ -67,7 +144,9 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
           />
           <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${isPlaying ? 'bg-black/40' : 'bg-black/20 group-hover:bg-black/40'}`}>
             <div className={`backdrop-blur-sm rounded-full p-2 transition-all duration-300 shadow-sm ${isPlaying ? 'bg-white/20 scale-110' : 'bg-white/10 group-hover:bg-white/20 group-hover:scale-110'}`}>
-              {isPlaying ? (
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 text-white animate-spin" />
+              ) : isPlaying ? (
                 <Pause className="w-5 h-5 text-white" fill="currentColor" />
               ) : (
                 <Play className="w-5 h-5 text-white ml-0.5" fill="currentColor" />
@@ -76,10 +155,44 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
           </div>
         </button>
 
-        <div className="flex flex-col pt-1 min-w-0">
+        <div className="flex flex-col pt-1 min-w-0 flex-1">
           <h3 className="font-semibold text-lg leading-tight text-slate-900 dark:text-slate-50 tracking-tight group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-all duration-300 group-hover:translate-x-1 truncate">
             {name}
           </h3>
+        </div>
+
+        {/* Volume control */}
+        <div
+          className="relative shrink-0 flex items-center"
+          onMouseEnter={() => setShowVolume(true)}
+          onMouseLeave={() => setShowVolume(false)}
+        >
+          <button
+            onClick={toggleMute}
+            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+          </button>
+          {showVolume && (
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={isMuted ? 0 : volume}
+              onChange={(e) => {
+                setVolume(parseFloat(e.target.value))
+                setIsMuted(false)
+              }}
+              className="w-20 h-1 ml-1 accent-slate-800 dark:accent-slate-200 cursor-pointer"
+              aria-label="Volume"
+            />
+          )}
         </div>
       </div>
 
@@ -92,7 +205,7 @@ export function FullPodcastCard({ podcast }: FullPodcastCardProps) {
           <div className="flex-1 relative">
             <ScrubBarContainer
               duration={totalSeconds}
-              value={currentSeconds}
+              value={currentTime}
               onScrub={handleScrub}
               onScrubStart={handleScrubStart}
               onScrubEnd={handleScrubEnd}
