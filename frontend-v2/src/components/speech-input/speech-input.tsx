@@ -64,7 +64,8 @@ export function SpeechInput({
   const startRecording = useCallback(async () => {
     try {
       // Connect to backend WebSocket
-      const ws = new WebSocket("ws://localhost:3001/ws");
+      const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:3001";
+      const ws = new WebSocket(`${wsUrl}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {
