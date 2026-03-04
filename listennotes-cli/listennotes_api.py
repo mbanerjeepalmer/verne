@@ -4,6 +4,8 @@ A shared module for interacting with the ListenNotes API.
 """
 
 import os
+import sys
+import time
 from typing import Optional, Dict, Any
 import requests
 
@@ -39,126 +41,63 @@ class ListenNotesAPI:
         if self.api_key:
             self.headers["X-ListenAPI-Key"] = self.api_key
 
+    def _request(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Make an HTTP request with logging."""
+        params = kwargs.get("params", {})
+        print(f"[ListenNotes] {method} {url} params={params}", file=sys.stderr)
+        start = time.time()
+        try:
+            resp = requests.request(method, url, headers=self.headers, timeout=30, **kwargs)
+            elapsed_ms = (time.time() - start) * 1000
+            print(f"[ListenNotes] {resp.status_code} in {elapsed_ms:.0f}ms ({len(resp.content)} bytes)", file=sys.stderr)
+            resp.raise_for_status()
+            return resp
+        except requests.exceptions.Timeout:
+            elapsed_ms = (time.time() - start) * 1000
+            print(f"[ListenNotes] TIMEOUT after {elapsed_ms:.0f}ms", file=sys.stderr)
+            raise
+        except requests.exceptions.HTTPError as e:
+            body = ""
+            if e.response is not None:
+                try:
+                    body = e.response.text[:500]
+                except Exception:
+                    pass
+            print(f"[ListenNotes] HTTP {e.response.status_code if e.response else '?'}: {body}", file=sys.stderr)
+            raise
+
     def search(self, **params) -> Dict[str, Any]:
-        """
-        Search for podcasts or episodes.
-
-        Args:
-            **params: Query parameters for the search endpoint
-
-        Returns:
-            JSON response from the API
-        """
+        """Search for podcasts or episodes."""
         url = f"{self.base_url}/search"
-
-        # Remove None values from params
         clean_params = {k: v for k, v in params.items() if v is not None}
-
-        response = requests.get(url, headers=self.headers, params=clean_params)
-        response.raise_for_status()
-
-        return response.json()
+        return self._request("GET", url, params=clean_params).json()
 
     def best_podcasts(self, **params) -> Dict[str, Any]:
-        """
-        Fetch best podcasts.
-
-        Args:
-            **params: Query parameters for the best_podcasts endpoint
-
-        Returns:
-            JSON response from the API
-        """
+        """Fetch best podcasts."""
         url = f"{self.base_url}/best_podcasts"
-
-        # Remove None values from params
         clean_params = {k: v for k, v in params.items() if v is not None}
-
-        response = requests.get(url, headers=self.headers, params=clean_params)
-        response.raise_for_status()
-
-        return response.json()
+        return self._request("GET", url, params=clean_params).json()
 
     def get_podcast(self, podcast_id: str, **params) -> Dict[str, Any]:
-        """
-        Get detailed podcast information by ID.
-
-        Args:
-            podcast_id: The podcast identifier
-            **params: Query parameters (next_episode_pub_date, sort)
-
-        Returns:
-            JSON response from the API
-        """
+        """Get detailed podcast information by ID."""
         url = f"{self.base_url}/podcasts/{podcast_id}"
-
-        # Remove None values from params
         clean_params = {k: v for k, v in params.items() if v is not None}
-
-        response = requests.get(url, headers=self.headers, params=clean_params)
-        response.raise_for_status()
-
-        return response.json()
+        return self._request("GET", url, params=clean_params).json()
 
     def get_episode(self, episode_id: str, **params) -> Dict[str, Any]:
-        """
-        Get detailed episode information by ID.
-
-        Args:
-            episode_id: The episode identifier
-            **params: Query parameters (show_transcript)
-
-        Returns:
-            JSON response from the API
-        """
+        """Get detailed episode information by ID."""
         url = f"{self.base_url}/episodes/{episode_id}"
-
-        # Remove None values from params
         clean_params = {k: v for k, v in params.items() if v is not None}
-
-        response = requests.get(url, headers=self.headers, params=clean_params)
-        response.raise_for_status()
-
-        return response.json()
+        return self._request("GET", url, params=clean_params).json()
 
     def get_podcast_recommendations(self, podcast_id: str, **params) -> Dict[str, Any]:
-        """
-        Get podcast recommendations based on a podcast ID.
-
-        Args:
-            podcast_id: The podcast identifier
-            **params: Query parameters (safe_mode)
-
-        Returns:
-            JSON response from the API
-        """
+        """Get podcast recommendations based on a podcast ID."""
         url = f"{self.base_url}/podcasts/{podcast_id}/recommendations"
-
-        # Remove None values from params
         clean_params = {k: v for k, v in params.items() if v is not None}
-
-        response = requests.get(url, headers=self.headers, params=clean_params)
-        response.raise_for_status()
-
-        return response.json()
+        return self._request("GET", url, params=clean_params).json()
 
     def get_episode_recommendations(self, episode_id: str, **params) -> Dict[str, Any]:
-        """
-        Get episode recommendations based on an episode ID.
-
-        Args:
-            episode_id: The episode identifier
-            **params: Query parameters (safe_mode)
-
-        Returns:
-            JSON response from the API
-        """
+        """Get episode recommendations based on an episode ID."""
         url = f"{self.base_url}/episodes/{episode_id}/recommendations"
-
-        # Remove None values from params
         clean_params = {k: v for k, v in params.items() if v is not None}
-
-        response = requests.get(url, headers=self.headers, params=clean_params)
-        response.raise_for_status()
-
-        return response.json()
+        return self._request("GET", url, params=clean_params).json()

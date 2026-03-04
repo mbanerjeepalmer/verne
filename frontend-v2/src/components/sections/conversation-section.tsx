@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import QueryBlock from "../query-block/query-block";
-import { SendPromptToBedrock } from "@/services/aws";
+import { sendPromptToMistral } from "@/services/mistral";
 import { TOPIC_CLARIFICATION_PROMPT } from "@/prompts/TOPIC_CLARIFICATION";
 
 const ConversationSection = () => {
   const [response, setResponse] = useState("");
 
   const handleSubmit = async (text: string) => {
-    const llmResponse = await SendPromptToBedrock(
+    const llmResponse = await sendPromptToMistral(
       TOPIC_CLARIFICATION_PROMPT,
       text,
     );
