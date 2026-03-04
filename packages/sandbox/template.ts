@@ -2,6 +2,7 @@ import { Template, waitForPort } from "e2b";
 
 export const vibeTemplate = Template()
   .fromPythonImage("3.12")
+  .aptInstall(["jq"])
   .pipInstall([
     "mistral-vibe",
     "fastapi",

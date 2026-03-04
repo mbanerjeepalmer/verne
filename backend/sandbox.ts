@@ -191,7 +191,7 @@ export async function sendQuery(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(180_000),
   });
 
   if (!resp.ok) {
@@ -222,7 +222,7 @@ export async function sendQueryStream(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(180_000),
   });
 
   if (!resp.ok) {
@@ -235,23 +235,42 @@ export async function sendQueryStream(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop()!;
+      const lines = buffer.split("\n");
+      buffer = lines.pop()!;
 
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const event = JSON.parse(line) as SandboxEvent & { session_id?: string };
-      if (event.type === "session") {
-        sessionIdOut = event.session_id ?? "";
-      } else if (event.type !== "done") {
-        onEvent(event);
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let event: SandboxEvent & { session_id?: string };
+        try {
+          event = JSON.parse(line);
+        } catch (e) {
+          console.error("Failed to parse sandbox event:", e, "line:", line);
+          continue;
+        }
+        if (event.type === "session") {
+          sessionIdOut = event.session_id ?? "";
+        } else if (event.type === "error") {
+          console.error("[Sandbox] Error event:", event.content?.slice(0, 500));
+          onEvent(event);
+        } else if (event.type === "tool_call") {
+          console.log(`[Sandbox] Tool call: ${event.tool_name}`, event.args ? JSON.stringify(event.args).slice(0, 200) : "");
+          onEvent(event);
+        } else if (event.type === "tool_result" && event.error) {
+          console.error(`[Sandbox] Tool error (${event.tool_name}):`, event.error.slice(0, 500));
+          onEvent(event);
+        } else if (event.type !== "done") {
+          onEvent(event);
+        }
       }
     }
+  } finally {
+    reader.cancel().catch(() => {});
   }
 
   return { session_id: sessionIdOut };
