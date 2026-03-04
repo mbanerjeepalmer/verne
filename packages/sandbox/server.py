@@ -1,4 +1,4 @@
-"""FastAPI server wrapping Mistral Vibe's AgentLoop.
+"""FastAPI server wrapping an Anthropic-backed AgentLoop.
 
 Runs inside a sandbox (E2B / local). Exposes POST /message to drive the agent
 and GET /health for liveness checks.
@@ -39,7 +39,7 @@ _otel_initialized = False
 
 
 def _init_otel():
-    """Configure OpenTelemetry instrumentation for Mistral → Langfuse (once)."""
+    """Configure OpenTelemetry instrumentation → Langfuse (once)."""
     global _otel_initialized
     if _otel_initialized:
         return
@@ -54,7 +54,6 @@ def _init_otel():
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.instrumentation.mistralai import MistralAiInstrumentor
 
     # Parse headers from env (format: "key=value,key2=value2")
     raw_headers = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "")
@@ -74,8 +73,7 @@ def _init_otel():
     provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
-    MistralAiInstrumentor().instrument()
-    logging.info("MistralAI OpenTelemetry instrumentation enabled")
+    logging.info("OpenTelemetry instrumentation enabled")
 
 
 def _get_tracer():
@@ -83,15 +81,11 @@ def _get_tracer():
     from opentelemetry import trace
     return trace.get_tracer("verne.agent")
 
-# Unlock config paths before importing AgentLoop (required by vibe SDK)
-from vibe.core.paths.config_paths import unlock_config_paths
+from agent_loop import AgentLoop  # noqa: E402
 
-unlock_config_paths()
+SYSTEM_PROMPT_PATH = Path("/home/user/.vibe/prompts/podcast-agent.md")
 
-from vibe.core.agent_loop import AgentLoop  # noqa: E402
-from vibe.core.config import VibeConfig  # noqa: E402
-
-app = FastAPI(title="Vibe Agent Server")
+app = FastAPI(title="Verne Agent Server")
 
 # Session store: session_id → AgentLoop instance
 sessions: dict[str, AgentLoop] = {}
@@ -122,10 +116,11 @@ def _get_or_create_session(session_id: str | None) -> tuple[str, AgentLoop]:
         return session_id, sessions[session_id]
 
     _load_env()  # reload .env (may have been written after server start)
-    _init_otel()  # configure tracing before creating Mistral client
+    _init_otel()  # configure tracing before creating client
+
     sid = session_id or str(uuid.uuid4())
-    config = VibeConfig(auto_approve=True, system_prompt_id="podcast-agent")
-    agent = AgentLoop(config=config)
+    system_prompt = SYSTEM_PROMPT_PATH.read_text() if SYSTEM_PROMPT_PATH.exists() else ""
+    agent = AgentLoop(system_prompt=system_prompt)
     sessions[sid] = agent
     return sid, agent
 

@@ -142,4 +142,18 @@ The client wraps the REST API for scores, prompts, and datasets.
 
 ## This Project
 
-LangFuse credentials are in env vars `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`. See `backend/sandbox.ts` for the auth pattern (base64 encoding of `publicKey:secretKey`).
+LangFuse credentials are in `backend/.env` (not root `.env`). Env vars: `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`.
+
+**Host**: This project uses the **EU** host (`https://cloud.langfuse.com`). The US host returns "Invalid credentials".
+
+**Auth from bash**: `curl -u` does NOT work reliably. Use explicit base64 encoding:
+
+```bash
+source /Users/mbp/Projects/verne_3/backend/.env
+AUTH=$(echo -n "${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}" | base64)
+curl -s -H "Authorization: Basic ${AUTH}" "https://cloud.langfuse.com/api/public/traces/{traceId}"
+```
+
+**Parsing traces**: Pipe through `python3 -c` for structured output. Key fields on a trace: `name`, `input`, `output`, `latency`, `sessionId`, `metadata.attributes.error.type`, and `observations[]` (each with `type`, `name`, `model`, `usageDetails`, `latency`).
+
+See `backend/sandbox.ts` for the auth pattern used in application code.

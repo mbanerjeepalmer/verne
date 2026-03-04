@@ -24,13 +24,13 @@ let cachedSandbox: Sandbox | null = null;
 let cachedUrl: string | null = null;
 
 async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
-  const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
   const LISTENNOTES_API_KEY = process.env.LISTENNOTES_API_KEY ?? "";
   const LANGFUSE_PUBLIC_KEY = process.env.LANGFUSE_PUBLIC_KEY ?? "";
   const LANGFUSE_SECRET_KEY = process.env.LANGFUSE_SECRET_KEY ?? "";
 
-  if (!MISTRAL_API_KEY) {
-    throw new Error("MISTRAL_API_KEY is required in .env");
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is required in .env");
   }
 
   // Build OTEL auth header for Langfuse (Base64 of public:secret)
@@ -46,7 +46,7 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   console.log("Creating sandbox...");
   const sandbox = await Sandbox.create("vibe-agent", {
     envs: {
-      MISTRAL_API_KEY,
+      ANTHROPIC_API_KEY,
       LISTENNOTES_API_KEY,
       ...(langfuseOtelAuth && {
         OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "https://cloud.langfuse.com/api/public/otel/v1/traces",
@@ -58,7 +58,7 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   console.log(`Sandbox created: ${sandbox.sandboxId}`);
 
   const envLines = [
-    `MISTRAL_API_KEY=${MISTRAL_API_KEY}`,
+    `ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}`,
     `LISTENNOTES_API_KEY=${LISTENNOTES_API_KEY}`,
     ...(langfuseOtelAuth ? [
       `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://cloud.langfuse.com/api/public/otel/v1/traces`,
