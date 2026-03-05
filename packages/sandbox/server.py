@@ -52,7 +52,7 @@ def _init_otel():
 
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.mistralai import MistralAiInstrumentor
 
@@ -72,7 +72,7 @@ def _init_otel():
     exporter = OTLPSpanExporter(endpoint=endpoint, headers=headers)
     provider = TracerProvider()
     provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
-    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
     MistralAiInstrumentor().instrument()
     logging.info("MistralAI OpenTelemetry instrumentation enabled")
@@ -205,7 +205,8 @@ async def message_stream(req: MessageRequest):
             },
         ) as root_span:
             try:
-                async with asyncio.timeout(180):
+                OVERALL_TIMEOUT = 120
+                async with asyncio.timeout(OVERALL_TIMEOUT):
                     async for event in agent.act(req.message):
                         etype = type(event).__name__
 
@@ -216,7 +217,6 @@ async def message_stream(req: MessageRequest):
                         elif etype == "ToolCallEvent":
                             event_count += 1
                             args_dict = event.args.model_dump() if event.args else None
-                            # Start a span for this tool call
                             current_tool_span = tracer.start_span(
                                 f"tool.{event.tool_name}",
                                 attributes={
@@ -228,7 +228,6 @@ async def message_stream(req: MessageRequest):
                         elif etype == "ToolResultEvent":
                             event_count += 1
                             result_text = str(event.result) if event.result else None
-                            # Close the matching tool span
                             if current_tool_span:
                                 if event.error:
                                     current_tool_span.set_status(StatusCode.ERROR, event.error)
@@ -240,17 +239,20 @@ async def message_stream(req: MessageRequest):
                             yield _json.dumps({"type": "tool_result", "tool_name": event.tool_name, "result": result_text, "error": event.error}) + "\n"
                         elif etype == "ReasoningEvent":
                             yield _json.dumps({"type": "reasoning", "content": event.content}) + "\n"
-            except TimeoutError:
+            except TimeoutError as te:
                 errored = True
-                logging.error("Agent timed out after 180s for message: %s", req.message[:200])
-                root_span.set_status(StatusCode.ERROR, "Agent timed out after 180s")
+                err_msg = str(te) if str(te) else "Agent timed out"
+                logging.error("Agent timeout for message: %s — %s", req.message[:200], err_msg)
+                root_span.set_status(StatusCode.ERROR, err_msg)
                 root_span.set_attribute("error.type", "timeout")
+                root_span.set_attribute("error.message", err_msg)
                 if current_tool_span:
                     current_tool_span.set_status(StatusCode.ERROR, "Timed out")
                     current_tool_span.end()
-                yield _json.dumps({"type": "error", "content": "The agent timed out processing your request. Please try again."}) + "\n"
+                yield _json.dumps({"type": "error", "content": err_msg}) + "\n"
             except Exception as exc:
                 errored = True
+                err_str = f"API error from mistral (model: {agent.config.model if hasattr(agent.config, 'model') else 'unknown'}): {exc}"
                 logging.exception("Error streaming agent events")
                 root_span.set_status(StatusCode.ERROR, str(exc))
                 root_span.set_attribute("error.type", type(exc).__name__)
@@ -258,7 +260,7 @@ async def message_stream(req: MessageRequest):
                 if current_tool_span:
                     current_tool_span.set_status(StatusCode.ERROR, str(exc))
                     current_tool_span.end()
-                yield _json.dumps({"type": "error", "content": traceback.format_exc()}) + "\n"
+                yield _json.dumps({"type": "error", "content": err_str}) + "\n"
             finally:
                 context.detach(token)
 

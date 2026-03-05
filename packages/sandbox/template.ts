@@ -12,7 +12,7 @@ export const vibeTemplate = Template()
     "opentelemetry-exporter-otlp-proto-http",
     "opentelemetry-processor-baggage",
   ])
-  .copy("server.py", "/home/user/server.py")
+  .copy("server.py", "/home/user/server.py", { forceUpload: true })
   .setStartCmd(
     "cd /home/user && python -m uvicorn server:app --host 0.0.0.0 --port 8000",
     waitForPort(8000),

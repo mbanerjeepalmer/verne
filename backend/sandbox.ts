@@ -22,6 +22,19 @@ const SERVER_PORT = 8000;
 
 let cachedSandbox: Sandbox | null = null;
 let cachedUrl: string | null = null;
+let templateBuildPromise: Promise<void> | null = null;
+
+async function ensureTemplate(): Promise<void> {
+  if (templateBuildPromise) return templateBuildPromise;
+  templateBuildPromise = (async () => {
+    console.log("Building template...");
+    await Template.build(vibeTemplate, "vibe-agent-v2", {
+      onBuildLogs: defaultBuildLogger(),
+    });
+    console.log("Template built.");
+  })();
+  return templateBuildPromise;
+}
 
 async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
@@ -38,13 +51,10 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
     ? Buffer.from(`${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}`).toString("base64")
     : "";
 
-  console.log("Building template...");
-  await Template.build(vibeTemplate, "vibe-agent", {
-    onBuildLogs: defaultBuildLogger(),
-  });
+  await ensureTemplate();
 
   console.log("Creating sandbox...");
-  const sandbox = await Sandbox.create("vibe-agent", {
+  const sandbox = await Sandbox.create("vibe-agent-v2", {
     envs: {
       MISTRAL_API_KEY,
       LISTENNOTES_API_KEY,
@@ -191,7 +201,7 @@ export async function sendQuery(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(180_000),
+    signal: AbortSignal.timeout(140_000),
   });
 
   if (!resp.ok) {
@@ -222,7 +232,7 @@ export async function sendQueryStream(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(180_000),
+    signal: AbortSignal.timeout(140_000),
   });
 
   if (!resp.ok) {
