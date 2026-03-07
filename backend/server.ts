@@ -59,6 +59,23 @@ app.get("/sandbox/status", (c) => {
   return c.json(getSandboxStatus());
 });
 
+app.post("/sandbox/warmup", async (c) => {
+  console.log("Warmup request received from frontend");
+
+  // Non-blocking - return immediately
+  initSandbox()
+    .then((url) => console.log(`Sandbox warmup complete: ${url}`))
+    .catch((err) => console.error("Sandbox warmup failed:", err));
+
+  const status = getSandboxStatus();
+
+  return c.json({
+    success: true,
+    message: status.ready ? "Sandbox already ready" : "Sandbox warmup initiated",
+    status
+  });
+});
+
 app.post("/sandbox/restart", async (c) => {
   console.log("Restarting sandbox...");
   await killSandbox();

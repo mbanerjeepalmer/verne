@@ -7,6 +7,7 @@ import QueryBlock from "@/components/query-block/query-block";
 import { Mic, Search, Headphones, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useEffect } from "react";
 
 const poweredBy = [
   { name: "AWS Bedrock", logo: "/logos/bedrock.svg" },
@@ -62,6 +63,28 @@ const features = [
 
 export default function LandingPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    // Trigger sandbox warmup as soon as landing page loads
+    const warmupSandbox = async () => {
+      try {
+        const response = await fetch("/api/sandbox/warmup", {
+          method: "POST",
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Sandbox warmup:", data.message);
+        }
+      } catch (error) {
+        // Silent failure - warmup is an optimization, not required
+        console.debug("Sandbox warmup skipped:", error);
+      }
+    };
+
+    warmupSandbox();
+  }, []);
 
   return (
     <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white">
