@@ -22,6 +22,9 @@ const SERVER_PORT = 8000;
 
 let cachedSandbox: Sandbox | null = null;
 let cachedUrl: string | null = null;
+let warmupStartTime: number | null = null;
+let warmupCompleteTime: number | null = null;
+let templateBuilt = false;
 
 async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
   const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
@@ -38,10 +41,17 @@ async function createSandbox(): Promise<{ sandbox: Sandbox; url: string }> {
     ? Buffer.from(`${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}`).toString("base64")
     : "";
 
-  console.log("Building template...");
-  await Template.build(vibeTemplate, "vibe-agent", {
-    onBuildLogs: defaultBuildLogger(),
-  });
+  // Only build template once
+  if (!templateBuilt) {
+    console.log("Building template...");
+    await Template.build(vibeTemplate, "vibe-agent", {
+      onBuildLogs: defaultBuildLogger(),
+    });
+    templateBuilt = true;
+    console.log("Template built successfully");
+  } else {
+    console.log("Using cached template (already built)");
+  }
 
   console.log("Creating sandbox...");
   const sandbox = await Sandbox.create("vibe-agent", {
@@ -120,9 +130,19 @@ export function getSandboxStatus(): { ready: boolean; sandboxId: string | null; 
 }
 
 export async function initSandbox(): Promise<string> {
+  if (!warmupStartTime) {
+    warmupStartTime = Date.now();
+  }
+
   if (cachedSandbox && cachedUrl) {
+    console.log("Checking if cached sandbox is still alive...");
     const alive = await cachedSandbox.isRunning().catch(() => false);
     if (alive) {
+      console.log(`Using cached sandbox: ${cachedSandbox.sandboxId}`);
+      if (!warmupCompleteTime) {
+        warmupCompleteTime = Date.now();
+        console.log(`Sandbox warmup time: ${warmupCompleteTime - warmupStartTime}ms`);
+      }
       return cachedUrl;
     }
     console.log("Cached sandbox expired, creating new one...");
@@ -130,9 +150,16 @@ export async function initSandbox(): Promise<string> {
     cachedUrl = null;
   }
 
+  console.log("No cached sandbox available, creating new one...");
   const { sandbox, url } = await createSandbox();
   cachedSandbox = sandbox;
   cachedUrl = url;
+
+  if (!warmupCompleteTime) {
+    warmupCompleteTime = Date.now();
+    console.log(`Sandbox warmup time: ${warmupCompleteTime - warmupStartTime}ms`);
+  }
+
   return url;
 }
 
